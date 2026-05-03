@@ -1,0 +1,31 @@
+{
+  "name": "speed-o-light",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm -r dev",
+    "build": "pnpm -r build",
+    "check-types": "pnpm -r check-types",
+    "dev:web": "pnpm --filter web dev",
+    "dev:server": "pnpm --filter server dev",
+    "db:push": "pnpm --filter @speed-o-light/db db:push",
+    "db:studio": "pnpm --filter @speed-o-light/db db:studio",
+    "db:generate": "pnpm --filter @speed-o-light/db db:generate",
+    "db:migrate": "pnpm --filter @speed-o-light/db db:migrate"
+  },
+  "dependencies": {
+    "@speed-o-light/env": "workspace:*",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@speed-o-light/config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  },
+  "packageManager": "pnpm@10.33.2"
+}

@@ -1,0 +1,3 @@
+{
+  "extends": "@speed-o-light/config/tsconfig.base.json"
+}
