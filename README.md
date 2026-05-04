@@ -1,6 +1,8 @@
 # speed-o-light
 
-This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript stack that combines React, TanStack Router, Express, TRPC, and more.
+Speed-O-Light is a high-speed, web-based reaction game inspired by arcade "speed of light" and "whack-a-button" machines. Unlike traditional arcade games that can be perceived as "rigged," Speed-O-Light utilizes cryptographic commitments and Zero-Knowledge Proofs (ZKP) to provide Verifiable Fairness.
+
+The player must tap "Reward" lights while avoiding "Danger" lights within a capped session time. The integrity of the game is proven post-session and can be recorded on-chain.
 
 ## Features
 
