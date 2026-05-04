@@ -1,0 +1,7 @@
+[package]
+name = "speed_o_light_game_state"
+type = "bin"
+authors = [""]
+
+[dependencies]
+assist = { path = "../assist" }

@@ -1,0 +1,5 @@
+[workspace]
+members = ["assist", "speed_o_light_game_state"]
+default_member = "speed_o_light_game_state"
+
+[dependencies]

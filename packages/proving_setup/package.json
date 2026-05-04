@@ -1,0 +1,21 @@
+{
+  "name": "@speed-o-light/proving_setup",
+  "dependencies": {
+    "@aztec/bb.js": "0.84.0",
+    "@noir-lang/noir_js": "1.0.0-beta.6",
+    "@noir-lang/types": "1.0.0-beta.6",
+    "@speed-o-light/api": "workspace:*",
+    "@speed-o-light/db": "workspace:*",
+    "@speed-o-light/env": "workspace:*",
+    "axios": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@noir-lang/noir_codegen": "1.0.0-beta.6",
+    "@speed-o-light/config": "workspace:*",
+    "@types/express": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}
