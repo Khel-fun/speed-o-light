@@ -1,5 +1,5 @@
 export enum CircuitKind {
-  GAME_STATE = "speed_o_light_game_state",
+  SOL_GAME_STATE = "speed_o_light_game_state",
 }
 
 export enum VerificationStatus {

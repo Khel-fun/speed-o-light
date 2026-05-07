@@ -13,9 +13,12 @@
   "dependencies": {
     "@speed-o-light/db": "workspace:*",
     "@speed-o-light/env": "workspace:*",
+    "@speed-o-light/proving_setup": "workspace:*",
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
+    "bullmq": "^5.76.6",
     "dotenv": "catalog:",
+    "ioredis": "^5.10.1",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0",
     "zod": "catalog:"

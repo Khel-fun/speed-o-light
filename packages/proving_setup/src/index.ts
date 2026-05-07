@@ -23,7 +23,7 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const log = createLogger("proving_setup");
+const log = createLogger("proving-setup");
 
 // setting up Noir and UltraHonk Backend for specific circuit
 export function setupProver(circuit_name: CircuitKind) {
