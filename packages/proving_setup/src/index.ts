@@ -29,7 +29,7 @@ const log = createLogger("proving_setup");
 export function setupProver(circuit_name: CircuitKind) {
   const PATH_TO_CIRCUIT = resolve(
     __dirname,
-    `../proving_system/circuits/target/${circuit_name}.json`,
+    `../../circuits/speed_o_light/target/${circuit_name}.json`,
   );
 
   if (!fs.existsSync(PATH_TO_CIRCUIT)) {
@@ -61,7 +61,7 @@ export async function registerVk(circuit_name: CircuitKind) {
   const vkey = uint8ArrayToHex(verification_key);
   const VK_HEX_PATH = resolve(
     __dirname,
-    `../proving_system/circuits/target/${circuit_name}_vk.hex`,
+    `../../circuits/speed_o_light/target/${circuit_name}_vk.hex`,
   );
   fs.writeFileSync(VK_HEX_PATH, vkey);
   if (!fs.existsSync(VK_HEX_PATH)) {
@@ -86,7 +86,7 @@ export async function registerVk(circuit_name: CircuitKind) {
 
   const VK_HASH_PATH = resolve(
     __dirname,
-    `../proving_system/circuits/target/${circuit_name}_vkHash.json`,
+    `../../circuits/speed_o_light/target/${circuit_name}_vkHash.json`,
   );
   fs.writeFileSync(VK_HASH_PATH, JSON.stringify(reg_vk_response.data));
   if (!fs.existsSync(VK_HASH_PATH)) {
@@ -148,7 +148,7 @@ export async function verifyProof(
 
   const VK_HASH_PATH = resolve(
     __dirname,
-    `../proving_system/circuits/target/${circuit_name}_vkHash.json`,
+    `../../circuits/speed_o_light/target/${circuit_name}_vkHash.json`,
   );
   if (!fs.existsSync(VK_HASH_PATH)) {
     log.warn(
@@ -165,7 +165,7 @@ export async function verifyProof(
   const proof_payload = {
     proofType: "ultrahonk",
     vkRegistered: true,
-    chainId: 8453,
+    chainId: 84532,
     proofOptions: {
       variant: "Plain",
     },

@@ -1,14 +1,18 @@
+import { PrismaClient } from "./generated/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { env } from "@speed-o-light/env/server";
 
-import { PrismaClient } from "../prisma/generated/client";
-
-export function createPrismaClient() {
-  const adapter = new PrismaPg({
-    connectionString: env.DATABASE_URL,
-  });
-  return new PrismaClient({ adapter });
+if ("__dirname" in globalThis) {
+  delete (globalThis as any).__dirname;
 }
 
-const prisma = createPrismaClient();
-export default prisma;
+const globalForPrisma = global as unknown as { prisma: PrismaClient };
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+}
+
+export * from "./generated/client";

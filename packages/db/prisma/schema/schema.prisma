@@ -1,10 +1,190 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../generated"
-  moduleFormat = "esm"
-  runtime = "nodejs"
+  provider = "prisma-client-js"
+  output   = "../../src/generated/client"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model circuits {
+  id               String   @id @db.Uuid
+  game_id          String   @db.Uuid
+  circuit_name     String
+  compiled_circuit Json
+  verification_key String
+  vk_hash          String
+  created_at       DateTime @default(now())
+  updated_at       DateTime
+  games            games    @relation(fields: [game_id], references: [id], onDelete: Cascade)
+  proofs           proofs[]
+
+  @@index([game_id])
+}
+
+model game_sessions {
+  id                     String                  @id @db.Uuid
+  game_id                String                  @db.Uuid
+  status                 session_status          @default(STARTED)
+  created_at             DateTime                @default(now())
+  updated_at             DateTime
+  games                  games                   @relation(fields: [game_id], references: [id])
+  minesweeper_sessions   minesweeper_sessions?
+  speed_o_light_sessions speed_o_light_sessions?
+  proofs                 proofs[]
+  session_players        session_players[]
+
+  @@index([game_id])
+  @@index([game_id, status])
+  @@index([status])
+}
+
+model games {
+  id                      String                    @id @db.Uuid
+  name                    String                    @unique
+  created_at              DateTime                  @default(now())
+  updated_at              DateTime
+  circuits                circuits[]
+  game_sessions           game_sessions[]
+  player_game_leaderboard player_game_leaderboard[]
+  proofs                  proofs[]
+}
+
+model minesweeper_sessions {
+  id            String        @id @db.Uuid
+  session_id    String        @unique @db.Uuid
+  seed          String
+  merkle_root   String
+  cells         Json
+  created_at    DateTime      @default(now())
+  updated_at    DateTime
+  game_sessions game_sessions @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@index([session_id])
+}
+
+model speed_o_light_sessions {
+  id             String  @id @db.Uuid
+  session_id     String  @unique @db.Uuid // FK to the shared game_sessions table
+  seed           String //  random seed
+  seed_signature String? // seed provenance (nullable)
+  grid_sequence  Json // 136-entry generated grid sequence: [{index: number, is_danger: bool}], deterministic from seed
+  tap_sequence   Json // 136-entry player interaction record :  [{seq_pos: number, is_danger: bool, is_tapped: bool}]
+  danger_tap_pos Int? // Sequence position [0–135] of the danger tap (nullable for a perect win)
+  score          Int     @default(0) // Count of successful (non-danger) taps. Denormalized from tap_sequence.
+
+  created_at DateTime @default(now())
+  updated_at DateTime
+
+  game_sessions game_sessions @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@index([session_id])
+}
+
+model player_game_leaderboard {
+  id              String   @id @db.Uuid
+  player_address  String
+  game_id         String   @db.Uuid
+  best_session_xp Int      @default(0)
+  best_session_id String   @db.Uuid
+  updated_at      DateTime
+  games           games    @relation(fields: [game_id], references: [id])
+  players         players  @relation(fields: [player_address], references: [id])
+
+  @@unique([player_address, game_id])
+  @@index([game_id, best_session_xp(sort: Desc)])
+}
+
+model players {
+  id                      String                    @id
+  total_xp                Int                       @default(0)
+  wins                    Int                       @default(0)
+  created_at              DateTime                  @default(now())
+  updated_at              DateTime
+  player_game_leaderboard player_game_leaderboard[]
+  proof_players           proof_players[]
+  session_players         session_players[]
+}
+
+model proof_players {
+  id             String   @id @db.Uuid
+  proof_id       String   @db.Uuid
+  player_address String
+  created_at     DateTime @default(now())
+  players        players  @relation(fields: [player_address], references: [id])
+  proofs         proofs   @relation(fields: [proof_id], references: [id], onDelete: Cascade)
+
+  @@unique([proof_id, player_address])
+  @@index([player_address])
+  @@index([proof_id])
+}
+
+model proofs {
+  id                     String             @id @db.Uuid
+  game_id                String             @db.Uuid
+  session_id             String             @db.Uuid
+  circuit_id             String             @db.Uuid
+  bb_verification_status Boolean
+  kurier_job_id          String?            @unique @db.Uuid
+  created_at             DateTime           @default(now())
+  updated_at             DateTime
+  proof_players          proof_players[]
+  circuits               circuits           @relation(fields: [circuit_id], references: [id])
+  games                  games              @relation(fields: [game_id], references: [id])
+  game_sessions          game_sessions      @relation(fields: [session_id], references: [id])
+  verification_jobs      verification_jobs?
+
+  @@index([circuit_id])
+  @@index([game_id])
+  @@index([kurier_job_id])
+  @@index([session_id])
+}
+
+model session_players {
+  id             String        @id @db.Uuid
+  session_id     String        @db.Uuid
+  player_address String
+  xp             Int           @default(0)
+  is_winner      Boolean       @default(false)
+  created_at     DateTime      @default(now())
+  updated_at     DateTime
+  players        players       @relation(fields: [player_address], references: [id])
+  game_sessions  game_sessions @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@unique([session_id, player_address])
+  @@index([player_address, xp])
+  @@index([session_id, xp])
+}
+
+model verification_jobs {
+  kurier_job_id       String               @id @db.Uuid
+  optimistic_verify   Boolean
+  verification_status verification_status?
+  tx_hash             String?
+  aggregation_id      Int?
+  aggregation_details Json?
+  created_at          DateTime             @default(now())
+  updated_at          DateTime
+  proofs              proofs               @relation(fields: [kurier_job_id], references: [kurier_job_id])
+
+  @@index([aggregation_id])
+  @@index([verification_status])
+}
+
+enum session_status {
+  STARTED
+  IN_PROGRESS
+  CANCELLED
+  FINISHED
+}
+
+enum verification_status {
+  QUEUED
+  VALID
+  SUBMITTED
+  INCLUDED_IN_BLOCK
+  FINALIZED
+  AGGREGATION_PENDING
+  AGGREGATED
+  FAILED
 }

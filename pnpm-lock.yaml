@@ -310,6 +310,9 @@ importers:
       '@noir-lang/types':
         specifier: 1.0.0-beta.6
         version: 1.0.0-beta.6
+      '@speed-o-light/api':
+        specifier: workspace:*
+        version: link:../api
       '@speed-o-light/db':
         specifier: workspace:*
         version: link:../db
