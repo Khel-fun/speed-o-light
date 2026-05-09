@@ -1,4 +1,5 @@
-import { PrismaClient } from "./generated/client";
+import { env } from "@speed-o-light/env/server";
+import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 if ("__dirname" in globalThis) {
@@ -15,4 +16,4 @@ if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
 
-export * from "./generated/client";
+export * from "@prisma/client";

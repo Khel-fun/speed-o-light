@@ -8,7 +8,7 @@ import { CircuitKind } from "@speed-o-light/proving_setup/src/types";
 import { syncKurierJobToDatabase } from "../kurier_sync";
 import { createLogger } from "../../logger";
 
-const log = createLogger("proof-queue");
+const log = createLogger("speed-o-light-proof-queue");
 
 // ---------------------------------------------------------------------------
 // 1. Connection & Types

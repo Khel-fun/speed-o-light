@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../../src/generated/client"
 }
 
 datasource db {
@@ -30,9 +29,9 @@ model game_sessions {
   updated_at             DateTime
   games                  games                   @relation(fields: [game_id], references: [id])
   minesweeper_sessions   minesweeper_sessions?
-  speed_o_light_sessions speed_o_light_sessions?
   proofs                 proofs[]
   session_players        session_players[]
+  speed_o_light_sessions speed_o_light_sessions?
 
   @@index([game_id])
   @@index([game_id, status])
@@ -58,24 +57,6 @@ model minesweeper_sessions {
   cells         Json
   created_at    DateTime      @default(now())
   updated_at    DateTime
-  game_sessions game_sessions @relation(fields: [session_id], references: [id], onDelete: Cascade)
-
-  @@index([session_id])
-}
-
-model speed_o_light_sessions {
-  id             String  @id @db.Uuid
-  session_id     String  @unique @db.Uuid // FK to the shared game_sessions table
-  seed           String //  random seed
-  seed_signature String? // seed provenance (nullable)
-  grid_sequence  Json // 136-entry generated grid sequence: [{index: number, is_danger: bool}], deterministic from seed
-  tap_sequence   Json // 136-entry player interaction record :  [{seq_pos: number, is_danger: bool, is_tapped: bool}]
-  danger_tap_pos Int? // Sequence position [0–135] of the danger tap (nullable for a perect win)
-  score          Int     @default(0) // Count of successful (non-danger) taps. Denormalized from tap_sequence.
-
-  created_at DateTime @default(now())
-  updated_at DateTime
-
   game_sessions game_sessions @relation(fields: [session_id], references: [id], onDelete: Cascade)
 
   @@index([session_id])
@@ -154,6 +135,22 @@ model session_players {
   @@unique([session_id, player_address])
   @@index([player_address, xp])
   @@index([session_id, xp])
+}
+
+model speed_o_light_sessions {
+  id             String        @id @db.Uuid
+  session_id     String        @unique @db.Uuid
+  seed           String
+  seed_signature String?
+  grid_sequence  Json
+  tap_sequence   Json
+  danger_tap_pos Int?
+  score          Int           @default(0)
+  created_at     DateTime      @default(now())
+  updated_at     DateTime
+  game_sessions  game_sessions @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@index([session_id])
 }
 
 model verification_jobs {

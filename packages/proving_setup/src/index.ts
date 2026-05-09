@@ -11,12 +11,13 @@ import {
   uint8ArrayToHex,
   validateAbiInput,
 } from "./utils";
+import { env } from "@speed-o-light/env/server";
 import { createLogger } from "../../api/src/logger";
 import fs from "fs";
 import path from "path";
 import { resolve } from "path";
 import { fileURLToPath } from "url";
-import axios from "axios";
+import axios, { isAxiosError } from "axios";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -24,6 +25,32 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const log = createLogger("proving-setup");
+
+export async function getRandomSeed(): Promise<string> {
+  let seed: string = "";
+  try {
+    const seedResponse = await axios.post(
+      `${env.KURIER_URL}/random-hash/${env.KURIER_API}`,
+      {},
+    );
+    seed = seedResponse.data.hash;
+    if (seed) {
+      log.info(`[GAME] Seed: ${seed}`);
+    }
+    return seed;
+  } catch (err) {
+    if (isAxiosError(err)) {
+      log.error(
+        "[Game] Kurier random-hash failed:",
+        err.response?.status,
+        err.response?.data ?? err.message,
+      );
+    } else {
+      log.error("[GAME] Kurier random-hash failed:", err);
+    }
+    throw err;
+  }
+}
 
 // setting up Noir and UltraHonk Backend for specific circuit
 export function setupProver(circuit_name: CircuitKind) {
@@ -49,11 +76,6 @@ export function setupProver(circuit_name: CircuitKind) {
 
 // generating and registering the circuit specific verification key with the zkVerify Kurier relayer
 export async function registerVk(circuit_name: CircuitKind) {
-  const { KURIER_URL, KURIER_API } = process.env;
-  if (!KURIER_URL || !KURIER_API) {
-    throw new Error("[ERR: Env] Missing environment variables");
-  }
-
   const { backend } = setupProver(circuit_name);
   log.debug(`## Generating Verification Key for ${circuit_name}`);
   const verification_key = await backend.getVerificationKey({ keccak: true });
@@ -80,7 +102,7 @@ export async function registerVk(circuit_name: CircuitKind) {
 
   log.info(`## Registering Verification Key at Kurier for ${circuit_name}`);
   const reg_vk_response = await axios.post(
-    `${KURIER_URL}/register-vk/${KURIER_API}`,
+    `${env.KURIER_URL}/register-vk/${env.KURIER_API}`,
     vk_payload,
   );
 
@@ -141,11 +163,6 @@ export async function verifyProof(
   proofHex: string,
   formattedPublicInputs: string[],
 ): Promise<{ jobId: string; optimisticVerify: string }> {
-  const { KURIER_URL, KURIER_API } = process.env;
-  if (!KURIER_URL || !KURIER_API) {
-    throw new Error("[ERR: Env] Missing environment variables");
-  }
-
   const VK_HASH_PATH = resolve(
     __dirname,
     `../../circuits/speed_o_light/target/${circuit_name}_vkHash.json`,
@@ -179,7 +196,7 @@ export async function verifyProof(
 
   log.info("## Submitting Proof to Kurier");
   const submit_response = await axios.post(
-    `${KURIER_URL}/submit-proof/${KURIER_API}`,
+    `${env.KURIER_URL}/submit-proof/${env.KURIER_API}`,
     proof_payload,
   );
 

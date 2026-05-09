@@ -1,6 +1,14 @@
-import "dotenv/config";
+import { config } from "dotenv";
+import path from "path";
+import { resolve } from "path";
+import { fileURLToPath } from "url";
 import { createEnv } from "@t3-oss/env-core";
 import { z } from "zod";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+config({ path: resolve(__dirname, "../../../apps/server/.env") });
 
 export const env = createEnv({
   server: {
