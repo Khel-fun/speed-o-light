@@ -1,6 +1,5 @@
 import { prisma } from "@speed-o-light/db";
-import { queryKurierStatus } from "@speed-o-light/proving_setup/src/index";
-import { VerificationStatus as KurierVerificationStatus } from "@speed-o-light/proving_setup/src/types";
+import { queryKurierStatus, VerificationStatus as KurierVerificationStatus } from "@speed-o-light/proving_setup";
 import { createLogger } from "../logger";
 
 const log = createLogger("kurier-db-syncing");

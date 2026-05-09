@@ -4,7 +4,7 @@ import { prisma } from "@speed-o-light/db";
 import { env } from "@speed-o-light/env/server";
 import { generateGameStateProof, submitProof } from "@speed-o-light/proving_setup/speed_o_light/proving";
 import type { tap } from "@speed-o-light/proving_setup/speed_o_light/types";
-import { CircuitKind } from "@speed-o-light/proving_setup/src/types";
+import { CircuitKind } from "@speed-o-light/proving_setup";
 import { syncKurierJobToDatabase } from "../kurier_sync";
 import { createLogger } from "../../logger";
 

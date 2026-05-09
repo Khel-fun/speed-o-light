@@ -1,3 +1,4 @@
+export * from "./types";
 import { type CompiledCircuit, Noir } from "@noir-lang/noir_js";
 import { UltraHonkBackend } from "@aztec/bb.js";
 import {

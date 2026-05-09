@@ -1,5 +1,14 @@
 {
   "name": "@speed-o-light/proving_setup",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./speed_o_light/*": {
+      "default": "./speed_o_light/*.ts"
+    }
+  },
   "dependencies": {
     "@aztec/bb.js": "0.84.0",
     "@noir-lang/noir_js": "1.0.0-beta.6",
