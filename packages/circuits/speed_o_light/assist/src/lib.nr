@@ -40,8 +40,7 @@ pub fn gen_glow_sequence(seed: Field) -> [u32; GLOW_COUNT] {
     seq[0] = (prf_domain(seed, 0, 0) as u32) % GRID_COUNT;
 
     for i in 1..GLOW_COUNT {
-        let raw_field = (prf_domain(seed, 0, i) as u32) % (GRID_COUNT - 1);
-        let raw = raw_field as u32;
+        let raw = (prf_domain(seed, 0, i) as u32) % (GRID_COUNT - 1);
         let prev = seq[i - 1];
         let step: u32 = (raw >= prev) as u32; // 1 if raw >= prev, else 0
         seq[i] = raw + step;
