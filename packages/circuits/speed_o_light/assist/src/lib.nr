@@ -17,7 +17,7 @@ pub struct tap { // captured tile tap data from client
 }
 
 // ---------------------------------------------------------------------------
-// Core PRF - maps (seed, nonce) deterministically to a u64
+// Core PRF - maps (seed, nonce) deterministically to a u32
 // ---------------------------------------------------------------------------
 fn prf_domain(seed: Field, domain: Field, nonce: u32) -> u32 {
     Poseidon2::hash([seed, domain, nonce as Field], 3) as u32

@@ -6,7 +6,7 @@ use dep::assist::{get_grid_sequence, GLOW_COUNT, tap};
 //  tap_sequence: [tap; GLOW_COUNT] - array of tap structs representing player taps
 //  danger_tap: tap - the danger tap that end the game
 // ---------------------------------------------------------------------------
-fn main(seed: pub Field, tap_sequence: pub [tap; GLOW_COUNT], danger_tap: pub tap) {
+fn main(seed: pub Field, tap_sequence: [tap; GLOW_COUNT], danger_tap: tap) {
     // [CHECK 01] assert if the propogated entiries match the generated grid sequence
     let grid_sequence = get_grid_sequence(seed);
     for i in 0..GLOW_COUNT {

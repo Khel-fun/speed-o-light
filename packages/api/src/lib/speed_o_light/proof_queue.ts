@@ -25,6 +25,9 @@ export type ProofJobData = {
   seed: string;
   tap_sequence: tap[];
   danger_tap: tap;
+  // Checkpoint fields — persisted after proof generation so retries skip it
+  proofHex?: string;
+  publicInputs?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -72,7 +75,7 @@ export function initProofWorker() {
       log.info(`[PROOF_WORKER] Started processing job: ${job.id}`);
 
       if( data.type === "SOL_GAME_STATE") {
-        return processGameStateProof(data);
+        return processGameStateProof(job);
       } else {
         throw new Error(`[Worker] Unknown job type: ${(data as any).type}`);
       }
@@ -122,71 +125,85 @@ async function attachProofPlayers(proofId: string, sessionId: string) {
   });
 }
 
-export async function processGameStateProof(data: ProofJobData) {
-  let proofHex: string | null = null;
-  let publicInputs: string[] | null = null;
-  try {
-    ({ proofHex, publicInputs } = await generateGameStateProof(
-      data.seed,
-      data.tap_sequence,
-      data.danger_tap
-    ));
+export async function processGameStateProof(job: Job<ProofJobData>) {
+  const data = job.data;
+  const maxAttempts = job.opts.attempts ?? 1;
 
-    const proof = await prisma.proofs.create({
-      data: {
-        id: crypto.randomUUID(),
-        game_id: data.gameId,
-        session_id: data.sessionId,
-        circuit_id: data.circuitId,
-        bb_verification_status: true,
-        updated_at: new Date(),
-      },
+  try {
+    // ---------------------------------------------------------------------------
+    // Step 1: Generate proof — skipped on retry if checkpoint already set
+    // ---------------------------------------------------------------------------
+    let { proofHex, publicInputs } = data;
+    if (!proofHex || !publicInputs) {
+      log.info(`[PROOF_WORKER] Generating proof for session: ${data.sessionId}`);
+      ({ proofHex, publicInputs } = await generateGameStateProof(
+        data.seed,
+        data.tap_sequence,
+        data.danger_tap,
+      ));
+      // Persist checkpoint: future retries skip proof generation entirely
+      await job.updateData({ ...data, proofHex, publicInputs });
+      log.info(`[PROOF_WORKER] Proof generated and checkpointed for session: ${data.sessionId}`);
+    } else {
+      log.info(`[PROOF_WORKER] Proof checkpoint found — skipping generation for session: ${data.sessionId}`);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Step 2: Persist proof record — idempotent (session may already have one from a prior attempt)
+    // ---------------------------------------------------------------------------
+    let proof = await prisma.proofs.findFirst({ where: { session_id: data.sessionId } });
+    if (!proof) {
+      proof = await prisma.proofs.create({
+        data: {
+          id: crypto.randomUUID(),
+          game_id: data.gameId,
+          session_id: data.sessionId,
+          circuit_id: data.circuitId,
+          bb_verification_status: true,
+          updated_at: new Date(),
+        },
+      });
+      await attachProofPlayers(proof.id, data.sessionId);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Step 3: Submit to Kurier — the step most likely to fail transiently
+    // ---------------------------------------------------------------------------
+    const { jobId, optimisticVerify } = await submitProof(
+      CircuitKind.SOL_GAME_STATE,
+      proofHex,
+      publicInputs,
+    );
+
+    await prisma.$transaction(async (tx) => {
+      await tx.proofs.update({
+        where: { id: proof.id },
+        data: { kurier_job_id: jobId },
+      });
+      await tx.verification_jobs.create({
+        data: {
+          kurier_job_id: jobId,
+          optimistic_verify: optimisticVerify === "success",
+          verification_status:
+            optimisticVerify === "success" ? "SUBMITTED" : "FAILED",
+          updated_at: new Date(),
+        },
+      });
     });
 
-    await attachProofPlayers(proof.id, data.sessionId);
+    await syncKurierJobToDatabase(jobId);
 
-    // try {
-    //   const { jobId, optimisticVerify } = await submitProof(
-    //     CircuitKind.SOL_GAME_STATE,
-    //     proofHex,
-    //     publicInputs,
-    //   );
+    // Success — wipe sensitive fields now that the job is fully done
+    await job.updateData({ ...job.data, seed: "", tap_sequence: [], proofHex: undefined, publicInputs: undefined });
 
-    //   await prisma.$transaction(async (tx) => {
-    //     await tx.proofs.update({
-    //       where: { id: proof.id },
-    //       data: { kurier_job_id: jobId },
-    //     });
-    //     await tx.verification_jobs.create({
-    //       data: {
-    //         kurier_job_id: jobId,
-    //         optimistic_verify: optimisticVerify === "success",
-    //         verification_status:
-    //           optimisticVerify === "success" ? "SUBMITTED" : "FAILED",
-    //         updated_at: new Date(),
-    //       },
-    //     });
-    //   });
-
-    //   await syncKurierJobToDatabase(jobId);
-    // } catch (err) {
-    //   log.error(
-    //     `[PROOF_WORKER] Kurier verification failed for ${data.sessionId}:`,
-    //     err,
-    //   );
-    //   throw err;
-    // }
   } catch (err) {
-    log.error(
-      `[PROOF_WORKER] Proof generation failed for ${data.sessionId}:`,
-      err,
-    );
-    throw err; // Trigger bullmq retry if applicable
-  } finally {
-    proofHex = null;
-    publicInputs = null;
-    (data as any).seed = null;
-    (data as any).tap_sequence = null;
-    (data as any).danger_tap = null;
+    log.error(`[PROOF_WORKER] Job failed for session ${data.sessionId} (attempt ${job.attemptsMade}/${maxAttempts}):`, err);
+
+    // Only wipe checkpoint on the final attempt — intermediate failures must preserve it
+    if (job.attemptsMade >= maxAttempts) {
+      await job.updateData({ ...job.data, seed: "", tap_sequence: [], proofHex: undefined, publicInputs: undefined });
+    }
+
+    throw err;
   }
 }

@@ -136,6 +136,7 @@ export async function generateProof(
   if (!is_valid) {
     throw new Error("[ERR: Proof] Proof verification failed");
   }
+  log.info(`## Proof verified successfully for ${circuit_name}`);
 
   return {
     proofHex,
