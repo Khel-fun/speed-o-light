@@ -12,18 +12,13 @@ import {
   uint8ArrayToHex,
   validateAbiInput,
 } from "./utils";
+import { circuitJsonPath, vkHexPath, vkHashPath } from "@speed-o-light/circuits";
 import { env } from "@speed-o-light/env/server";
 import { createLogger } from "../../api/src/logger";
 import fs from "fs";
-import path from "path";
-import { resolve } from "path";
-import { fileURLToPath } from "url";
 import axios, { isAxiosError } from "axios";
 import dotenv from "dotenv";
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const log = createLogger("proving-setup");
 
@@ -55,10 +50,7 @@ export async function getRandomSeed(): Promise<string> {
 
 // setting up Noir and UltraHonk Backend for specific circuit
 export function setupProver(circuit_name: CircuitKind) {
-  const PATH_TO_CIRCUIT = resolve(
-    __dirname,
-    `../../circuits/speed_o_light/target/${circuit_name}.json`,
-  );
+  const PATH_TO_CIRCUIT = circuitJsonPath(circuit_name);
 
   if (!fs.existsSync(PATH_TO_CIRCUIT)) {
     throw new Error(`[ERR: Circuits] Circuit file not found`);
@@ -82,10 +74,7 @@ export async function registerVk(circuit_name: CircuitKind) {
   const verification_key = await backend.getVerificationKey({ keccak: true });
 
   const vkey = uint8ArrayToHex(verification_key);
-  const VK_HEX_PATH = resolve(
-    __dirname,
-    `../../circuits/speed_o_light/target/${circuit_name}_vk.hex`,
-  );
+  const VK_HEX_PATH = vkHexPath(circuit_name);
   fs.writeFileSync(VK_HEX_PATH, vkey);
   if (!fs.existsSync(VK_HEX_PATH)) {
     throw new Error(
@@ -107,10 +96,7 @@ export async function registerVk(circuit_name: CircuitKind) {
     vk_payload,
   );
 
-  const VK_HASH_PATH = resolve(
-    __dirname,
-    `../../circuits/speed_o_light/target/${circuit_name}_vkHash.json`,
-  );
+  const VK_HASH_PATH = vkHashPath(circuit_name);
   fs.writeFileSync(VK_HASH_PATH, JSON.stringify(reg_vk_response.data));
   if (!fs.existsSync(VK_HASH_PATH)) {
     throw new Error(
@@ -164,10 +150,7 @@ export async function verifyProof(
   proofHex: string,
   formattedPublicInputs: string[],
 ): Promise<{ jobId: string; optimisticVerify: string }> {
-  const VK_HASH_PATH = resolve(
-    __dirname,
-    `../../circuits/speed_o_light/target/${circuit_name}_vkHash.json`,
-  );
+  const VK_HASH_PATH = vkHashPath(circuit_name);
   if (!fs.existsSync(VK_HASH_PATH)) {
     log.warn(
       `VK hash not found for ${circuit_name}, registering new VK`,

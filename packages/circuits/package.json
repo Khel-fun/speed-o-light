@@ -1,0 +1,13 @@
+{
+  "name": "@speed-o-light/circuits",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    }
+  },
+  "devDependencies": {
+    "@speed-o-light/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

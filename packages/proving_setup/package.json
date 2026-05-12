@@ -10,6 +10,7 @@
     }
   },
   "dependencies": {
+    "@speed-o-light/circuits": "workspace:*",
     "@aztec/bb.js": "0.84.0",
     "@noir-lang/noir_js": "1.0.0-beta.6",
     "@noir-lang/types": "1.0.0-beta.6",

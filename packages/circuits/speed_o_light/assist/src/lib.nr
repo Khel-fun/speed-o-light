@@ -4,15 +4,14 @@ pub global GLOW_COUNT: u32 = 136; // total no. of tile glows in a session
 pub global DANGER_COUNT: u32 = 34; // total no. of danger glows in a session: 0.25 * GLOW_COUNT
 pub global GRID_COUNT: u32 = 25; //  total no. of tiles in the grid
 
-#[export]
 pub struct tile { // representation of a glowing tile in the grid
     pub index: u32, // the grid level index: [0-24]
     pub is_danger: bool, // wether the tile should glow in danger or normal mode
 }
 
-#[export]
 pub struct tap { // captured tile tap data from client
     pub seq_pos: u32, // sequence position [0,135], or 255 no danger tap
+    pub grid_index: u32, // the grid level index: [0-24]
     pub is_danger: bool, // wether the tile was in danger or normal mode
     pub is_tapped: bool, // wether the tile was tapped by the user
 }
@@ -20,8 +19,8 @@ pub struct tap { // captured tile tap data from client
 // ---------------------------------------------------------------------------
 // Core PRF - maps (seed, nonce) deterministically to a u64
 // ---------------------------------------------------------------------------
-fn prf_domain(seed: Field, domain: Field, nonce: u32) -> Field {
-    Poseidon2::hash([seed, domain, nonce as Field], 1)
+fn prf_domain(seed: Field, domain: Field, nonce: u32) -> u32 {
+    Poseidon2::hash([seed, domain, nonce as Field], 3) as u32
 }
 
 // ---------------------------------------------------------------------------
@@ -37,10 +36,10 @@ pub fn gen_glow_sequence(seed: Field) -> [u32; GLOW_COUNT] {
     let mut seq: [u32; GLOW_COUNT] = [0; GLOW_COUNT];
 
     // Position 0: unconstrained, draw from full [0, 24]
-    seq[0] = (prf_domain(seed, 0, 0) as u32) % GRID_COUNT;
+    seq[0] = prf_domain(seed, 0, 0) % GRID_COUNT;
 
     for i in 1..GLOW_COUNT {
-        let raw = (prf_domain(seed, 0, i) as u32) % (GRID_COUNT - 1);
+        let raw = prf_domain(seed, 0, i) % (GRID_COUNT - 1);
         let prev = seq[i - 1];
         let step: u32 = (raw >= prev) as u32; // 1 if raw >= prev, else 0
         seq[i] = raw + step;
@@ -62,16 +61,16 @@ pub fn gen_glow_sequence(seed: Field) -> [u32; GLOW_COUNT] {
 // ---------------------------------------------------------------------------
 pub fn gen_danger_sequence(seed: Field) -> [u32; DANGER_COUNT] {
     // Initialise pool [0 .. 135]
-    let mut pool: [u32; 136] = [0; 136];
-    for i in 0..136 {
+    let mut pool: [u32; GLOW_COUNT] = [0; GLOW_COUNT];
+    for i in 0..GLOW_COUNT {
         pool[i] = i;
     }
 
     let mut result: [u32; DANGER_COUNT] = [0; DANGER_COUNT];
 
     for i in 0..DANGER_COUNT {
-        let remaining = (136 - i) as u32;
-        let offset = (prf_domain(seed, 1, i) as u32) % remaining;
+        let remaining = GLOW_COUNT - i;
+        let offset = prf_domain(seed, 1, i) % remaining;
         let j = i + offset;
 
         // Swap pool[i] <-> pool[j]

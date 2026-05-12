@@ -7,20 +7,20 @@ use dep::assist::{get_grid_sequence, GLOW_COUNT, tap};
 //  danger_tap: tap - the danger tap that end the game
 // ---------------------------------------------------------------------------
 fn main(seed: pub Field, tap_sequence: pub [tap; GLOW_COUNT], danger_tap: pub tap) {
-    // [CHECK 02] assert if the propogated entiries match the generated grid sequence
+    // [CHECK 01] assert if the propogated entiries match the generated grid sequence
     let grid_sequence = get_grid_sequence(seed);
     for i in 0..GLOW_COUNT {
         assert(
-            tap_sequence[i].seq_pos == grid_sequence[i].index,
-            "[ERR] Proof: tap index mismatch at position i",
+            tap_sequence[i].grid_index == grid_sequence[i].index,
+            "[ERR] Proof: tap index mismatch",
         );
         assert(
             tap_sequence[i].is_danger == grid_sequence[i].is_danger,
-            "[ERR] Proof: danger status mismatch at position i",
+            "[ERR] Proof: danger status mismatch",
         );
     }
 
-    // [CHECK 04] Validate danger tap by sequence position
+    // [CHECK 02] Validate danger tap by sequence position
     let pos = danger_tap.seq_pos;
     if (pos != 255) {
         // The grid at this position must be a danger tile (proven deterministic from seed)

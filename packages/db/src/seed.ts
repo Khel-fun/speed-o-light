@@ -1,10 +1,6 @@
 import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
+import { circuitJsonPath, vkHexPath, vkHashPath } from "@speed-o-light/circuits";
 import { prisma } from "./index";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 async function main() {
   console.log("Seeding database...");
@@ -21,21 +17,18 @@ async function main() {
   });
   console.log(`[db] Game initialized: ${game.name} (${game.id})`);
 
-  // 2. Locate the circuits targets directory
-  const targetDir = path.resolve(__dirname, "../../circuits/speed_o_light/target");
-
   const circuitsToSeed = ["speed_o_light_game_state"];
 
   for (const circuitName of circuitsToSeed) {
     console.log(`[db] Processing ${circuitName}...`);
 
     try {
-      const jsonContent = await fs.readFile(path.join(targetDir, `${circuitName}.json`), "utf8");
+      const jsonContent = await fs.readFile(circuitJsonPath(circuitName), "utf8");
       const compiledCircuit = JSON.parse(jsonContent);
 
-      const vkHexContent = await fs.readFile(path.join(targetDir, `${circuitName}_vk.hex`), "utf8");
+      const vkHexContent = await fs.readFile(vkHexPath(circuitName), "utf8");
 
-      const vkHashContent = await fs.readFile(path.join(targetDir, `${circuitName}_vkHash.json`), "utf8");
+      const vkHashContent = await fs.readFile(vkHashPath(circuitName), "utf8");
       const vkHashObj = JSON.parse(vkHashContent);
       const vkHash = vkHashObj.vkHash || vkHashObj.meta?.vkHash;
 

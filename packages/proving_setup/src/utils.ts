@@ -1,12 +1,7 @@
 import { CircuitKind } from "./types";
+import { circuitJsonPath } from "@speed-o-light/circuits";
 import type { AbiParameter } from "@noir-lang/types";
-import path from "path";
-import { resolve } from "path";
-import { fileURLToPath } from "url";
 import fs from "fs";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 interface CircuitAbi {
   parameters: AbiParameter[];
@@ -57,7 +52,7 @@ export function hexToUint8Array(hex: string): Uint8Array {
 }
 
 export function loadCircuitAbi(circuit_name: CircuitKind): CircuitAbi {
-  const circuitPath = resolve(__dirname,`../proving_system/circuits/target/${circuit_name}.json`);
+  const circuitPath = circuitJsonPath(circuit_name);
 
   if (!fs.existsSync(circuitPath)) {
     throw new Error(`[ERR: Circuit] Circuit file not found`);

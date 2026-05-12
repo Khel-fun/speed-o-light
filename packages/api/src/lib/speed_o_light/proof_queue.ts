@@ -145,37 +145,37 @@ export async function processGameStateProof(data: ProofJobData) {
 
     await attachProofPlayers(proof.id, data.sessionId);
 
-    try {
-      const { jobId, optimisticVerify } = await submitProof(
-        CircuitKind.SOL_GAME_STATE,
-        proofHex,
-        publicInputs,
-      );
+    // try {
+    //   const { jobId, optimisticVerify } = await submitProof(
+    //     CircuitKind.SOL_GAME_STATE,
+    //     proofHex,
+    //     publicInputs,
+    //   );
 
-      await prisma.$transaction(async (tx) => {
-        await tx.proofs.update({
-          where: { id: proof.id },
-          data: { kurier_job_id: jobId },
-        });
-        await tx.verification_jobs.create({
-          data: {
-            kurier_job_id: jobId,
-            optimistic_verify: optimisticVerify === "success",
-            verification_status:
-              optimisticVerify === "success" ? "SUBMITTED" : "FAILED",
-            updated_at: new Date(),
-          },
-        });
-      });
+    //   await prisma.$transaction(async (tx) => {
+    //     await tx.proofs.update({
+    //       where: { id: proof.id },
+    //       data: { kurier_job_id: jobId },
+    //     });
+    //     await tx.verification_jobs.create({
+    //       data: {
+    //         kurier_job_id: jobId,
+    //         optimistic_verify: optimisticVerify === "success",
+    //         verification_status:
+    //           optimisticVerify === "success" ? "SUBMITTED" : "FAILED",
+    //         updated_at: new Date(),
+    //       },
+    //     });
+    //   });
 
-      await syncKurierJobToDatabase(jobId);
-    } catch (err) {
-      log.error(
-        `[PROOF_WORKER] Kurier verification failed for ${data.sessionId}:`,
-        err,
-      );
-      throw err;
-    }
+    //   await syncKurierJobToDatabase(jobId);
+    // } catch (err) {
+    //   log.error(
+    //     `[PROOF_WORKER] Kurier verification failed for ${data.sessionId}:`,
+    //     err,
+    //   );
+    //   throw err;
+    // }
   } catch (err) {
     log.error(
       `[PROOF_WORKER] Proof generation failed for ${data.sessionId}:`,

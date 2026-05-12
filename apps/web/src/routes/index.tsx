@@ -21,7 +21,7 @@ const XP_PER_HIT = 5;
 // Types
 // ---------------------------------------------------------------------------
 type Tile = { index: number; is_danger: boolean };
-type Tap = { seq_pos: string; is_danger: boolean; is_tapped: boolean };
+type Tap = { seq_pos: string; grid_index: string; is_danger: boolean; is_tapped: boolean };
 type ActiveLight = { slotIndex: number; tileIndex: number; isDanger: boolean; expiresAt: number };
 type GameState = "IDLE" | "STARTING" | "PLAYING" | "FINISHED" | "VERIFYING";
 type PendingSubmit = {
@@ -98,13 +98,19 @@ function SpeedOLight() {
 
     // Snapshot submission data while refs are still live
     const tapSequence: Tap[] = gridSeqRef.current.map((tile, i) => ({
-      seq_pos: String(tile.index),
+      seq_pos: String(i),
+      grid_index: String(tile.index),
       is_danger: tile.is_danger,
-      is_tapped: tapRecord.current[i],
+      is_tapped: tapRecord.current[i] ?? false,
     }));
     const dangerTap: Tap = dangerTapRef.current
-      ? { seq_pos: String(dangerTapRef.current.slotIndex), is_danger: true, is_tapped: true }
-      : { seq_pos: "255", is_danger: false, is_tapped: false };
+      ? {
+          seq_pos: String(dangerTapRef.current.slotIndex),
+          grid_index: String(gridSeqRef.current[dangerTapRef.current.slotIndex]!.index),
+          is_danger: true,
+          is_tapped: true,
+        }
+      : { seq_pos: "255", grid_index: "255", is_danger: false, is_tapped: false };
 
     pendingSubmitRef.current = {
       sessionId: sessionIdRef.current!,

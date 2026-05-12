@@ -8,6 +8,7 @@ import { publicProcedure, router } from "../index";
 
 const tapSchema = z.object({
   seq_pos: z.string(),
+  grid_index: z.string(),
   is_danger: z.boolean(),
   is_tapped: z.boolean(),
 });
