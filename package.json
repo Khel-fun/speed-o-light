@@ -15,7 +15,14 @@
     "db:push": "pnpm --filter @speed-o-light/db db:push",
     "db:studio": "pnpm --filter @speed-o-light/db db:studio",
     "db:generate": "pnpm --filter @speed-o-light/db db:generate",
-    "db:migrate": "pnpm --filter @speed-o-light/db db:migrate"
+    "db:migrate": "pnpm --filter @speed-o-light/db db:migrate",
+    "db:seed": "pnpm --filter @speed-o-light/db db:seed",
+    "db:reset": "pnpm --filter @speed-o-light/db db:push --force-reset",
+    "contract:build": "pnpm --filter @speed-o-light/contracts build",
+    "contract:test": "pnpm --filter @speed-o-light/contracts test",
+    "contract:deploy:local": "pnpm --filter @speed-o-light/contracts deploy:local",
+    "contract:deploy:sepolia": "pnpm --filter @speed-o-light/contracts deploy:sepolia",
+    "contract:deploy:base-sepolia": "pnpm --filter @speed-o-light/contracts deploy:base-sepolia"
   },
   "dependencies": {
     "@speed-o-light/env": "workspace:*",
