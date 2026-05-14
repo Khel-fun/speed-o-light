@@ -11,7 +11,8 @@ export default defineConfig({
   migrations: {
     path: path.join("prisma", "migrations"),
   },
+  // Prisma CLI (db push, migrate): use session pooler or direct DB — not transaction pooler :6543.
   datasource: {
-    url: env("DATABASE_URL"),
+    url: env("DIRECT_URL"),
   },
 });
