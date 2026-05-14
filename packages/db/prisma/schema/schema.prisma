@@ -141,7 +141,7 @@ model speed_o_light_sessions {
   id             String        @id @db.Uuid
   session_id     String        @unique @db.Uuid
   seed           String
-  seed_signature String?
+  seed_job_id    String?
   grid_sequence  Json
   tap_sequence   Json
   danger_tap_pos Int?

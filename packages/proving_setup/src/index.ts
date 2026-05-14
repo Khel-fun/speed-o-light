@@ -22,18 +22,16 @@ dotenv.config();
 
 const log = createLogger("proving-setup");
 
-export async function getRandomSeed(): Promise<string> {
-  let seed: string = "";
+export async function getRandomSeed(): Promise<{ seed: string; seed_job_id: string }> {
   try {
     const seedResponse = await axios.post(
       `${env.KURIER_URL}/random-hash/${env.KURIER_API}`,
       {},
     );
-    seed = seedResponse.data.hash;
-    if (seed) {
-      log.info(`[GAME] Seed: ${seed}`);
-    }
-    return seed;
+    const seed: string = seedResponse.data.hash;
+    const seed_job_id: string = seedResponse.data.jobId;
+    log.info(`[GAME] Seed: ${seed}`);
+    return { seed, seed_job_id };
   } catch (err) {
     if (isAxiosError(err)) {
       log.error(

@@ -31,7 +31,7 @@ export const appRouter = router({
         where: { name: "speed-o-light" },
       });
 
-      const seed = await getRandomSeed();
+      const { seed, seed_job_id } = await getRandomSeed();
       const rawSeq = await get_grid_sequence(seed);
       const gridSequence = rawSeq.map((tile) => ({
         index: Number(tile.index),
@@ -53,6 +53,7 @@ export const appRouter = router({
             id: crypto.randomUUID(),
             session_id: sessionId,
             seed,
+            seed_job_id,
             grid_sequence: gridSequence,
             tap_sequence: [],
             updated_at: new Date(),
