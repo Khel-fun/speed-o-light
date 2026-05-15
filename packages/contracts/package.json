@@ -1,0 +1,26 @@
+{
+  "name": "@speed-o-light/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Solidity contracts for Speed-O-Light ZK game",
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test -v",
+    "test:coverage": "forge coverage",
+    "lint": "solhint contracts/**/*.sol",
+    "format": "forge fmt",
+    "setup": "bash -c 'forge install OpenZeppelin/openzeppelin-contracts@v5.0.0 --no-commit && forge install foundry-rs/forge-std --no-commit'",
+    "deploy:local": "forge script script/Deploy.s.sol --rpc-url http://localhost:8545 --broadcast --private-key $PRIVATE_KEY",
+    "deploy:sepolia": "forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY",
+    "deploy:base-sepolia": "forge script script/Deploy.s.sol --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify --etherscan-api-key $BASESCAN_API_KEY",
+    "verify:sepolia": "forge verify-contract $CONTRACT_ADDRESS SpeedOLight --chain sepolia --etherscan-api-key $ETHERSCAN_API_KEY",
+    "anvil": "anvil --fork-url $MAINNET_RPC_URL"
+  },
+  "devDependencies": {
+    "forge-std": "^1.1.2",
+    "solhint": "^4.0.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.0.2"
+  }
+}

@@ -1,0 +1,21 @@
+# Foundry
+cache/
+out/
+!out/SpeedOLight.sol/
+
+# Dependencies
+lib/
+node_modules/
+
+# Env
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
