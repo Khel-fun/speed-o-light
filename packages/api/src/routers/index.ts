@@ -22,7 +22,7 @@ export const appRouter = router({
   newGame: publicProcedure
     .input(z.object({ playerAddress: z.string().regex(/^0x[0-9a-fA-F]{40}$/) }))
     .mutation(async ({ input }) => {
-      const playerAddress = getAddress(input.playerAddress);
+      const playerAddress = input.playerAddress.toLowerCase() as `0x${string}`;
 
       await prisma.players.upsert({
         where: { id: playerAddress },
@@ -92,7 +92,7 @@ export const appRouter = router({
     )
     .mutation(async ({ input }) => {
       const { sessionId, tapSequence, dangerTap } = input;
-      const playerAddress = getAddress(input.playerAddress);
+      const playerAddress = input.playerAddress.toLowerCase() as `0x${string}`;
 
       const gameSession = await prisma.game_sessions.findUniqueOrThrow({
         where: { id: sessionId },
@@ -177,6 +177,39 @@ export const appRouter = router({
           where: { id: sessionId },
           data: { status: "FINISHED", updated_at: new Date() },
         });
+
+        // Increment lifetime totals on the player row
+        await tx.players.update({
+          where: { id: playerAddress },
+          data: {
+            total_xp: { increment: xp },
+            ...(isWinner && { wins: { increment: 1 } }),
+            updated_at: new Date(),
+          },
+        });
+
+        // Upsert per-game leaderboard: only replace best if this session scored higher
+        const gameId = gameSession.game_id;
+        const existing = await tx.player_game_leaderboard.findUnique({
+          where: { player_address_game_id: { player_address: playerAddress, game_id: gameId } },
+        });
+        if (!existing) {
+          await tx.player_game_leaderboard.create({
+            data: {
+              id: crypto.randomUUID(),
+              player_address: playerAddress,
+              game_id: gameId,
+              best_session_xp: xp,
+              best_session_id: sessionId,
+              updated_at: new Date(),
+            },
+          });
+        } else if (xp > existing.best_session_xp) {
+          await tx.player_game_leaderboard.update({
+            where: { player_address_game_id: { player_address: playerAddress, game_id: gameId } },
+            data: { best_session_xp: xp, best_session_id: sessionId, updated_at: new Date() },
+          });
+        }
       });
 
       try {
@@ -202,7 +235,7 @@ export const appRouter = router({
       try {
         settlement = await signSettlementPayload(env.SIGNING_PRIVATE_KEY, {
           sessionId,
-          playerAddress,
+          playerAddress: getAddress(input.playerAddress),
           score,
           xpEarned: xp,
           won: isWinner,

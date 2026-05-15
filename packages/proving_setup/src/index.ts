@@ -162,10 +162,12 @@ export async function verifyProof(
     throw new Error("[ERR: ZKV] Verification key not found");
   }
   log.debug(`## vkHash found for ${circuit_name}: ${vkHash}`);
+  const chain_id = env.KURIER_CHAIN_ID;
+  if (!chain_id) { throw new Error("[ERR: ZKV] Unable to find chainId for proof attestation."); }
   const proof_payload = {
     proofType: "ultrahonk",
     vkRegistered: true,
-    chainId: 84532,
+    chainId: chain_id,
     proofOptions: {
       variant: "Plain",
     },

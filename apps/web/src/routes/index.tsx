@@ -179,7 +179,7 @@ function SpeedOLight() {
         endGame();
         return;
       }
-      setScore((s) => s + XP_PER_HIT);
+      setScore((s) => s + 1);
       aliveRef.current = aliveRef.current.filter((l) => l.slotIndex !== light.slotIndex);
       setActiveLights([...aliveRef.current]);
     },

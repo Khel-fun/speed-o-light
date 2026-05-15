@@ -18,6 +18,7 @@ export const env = createEnv({
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
     KURIER_URL: z.url(),
     KURIER_API: z.string().min(1),
+    KURIER_CHAIN_ID: z.coerce.number().int().positive(),
     SIGNING_PRIVATE_KEY: z.string().min(1),
     REDIS_URL: z.url().default("redis://localhost:6379"),
     LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
