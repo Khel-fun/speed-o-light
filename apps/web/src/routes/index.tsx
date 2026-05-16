@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Bomb, ExternalLink, Loader2, LogOut, Play, ShieldCheck, Timer, Trophy, Wallet, Zap } from "lucide-react";
-import { shortenAddress, useWallet } from "@/hooks/useWallet";
+import { useWallet } from "@/hooks/useWallet";
+import { shortenAddress } from "@/lib/shorten-address";
 import { publishSettlementOnChain, readOnChainPlayerStats } from "@/lib/publish-settlement";
 import { trpc } from "@/utils/trpc";
 

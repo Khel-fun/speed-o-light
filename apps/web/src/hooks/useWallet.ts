@@ -36,11 +36,6 @@ function messageFromWalletError(err: unknown): string {
   return "Could not connect wallet.";
 }
 
-export function shortenAddress(addr: string, left = 6, right = 4) {
-  if (addr.length <= left + right + 3) return addr;
-  return `${addr.slice(0, left)}…${addr.slice(-right)}`;
-}
-
 export function useWallet() {
   const [address, setAddress] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
