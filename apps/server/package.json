@@ -3,7 +3,7 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "build": "tsdown && mkdir -p circuits/speed_o_light && cp -r ../../packages/circuits/speed_o_light/target circuits/speed_o_light/",
+    "build": "tsdown && mkdir -p speed_o_light && cp -r ../../packages/circuits/speed_o_light/target speed_o_light/",
     "check-types": "tsc -b",
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
     "dev": "tsx watch src/index.ts",
