@@ -50,6 +50,9 @@ contract SpeedOLightState is Ownable {
     /// @notice Maximum leaderboard size.
     uint256 public constant MAX_LEADERBOARD_SIZE = 100;
 
+    /// @notice Maps player address to their leaderboard index + 1 (0 = not on leaderboard).
+    mapping(address => uint256) private playerLeaderboardIndex;
+
     // ──────────────────── Events ───────────────────
 
     /// @notice Emitted when a game result is successfully published.
@@ -161,46 +164,54 @@ contract SpeedOLightState is Ownable {
      * @param xp XP earned
      */
     function _updateLeaderboard(address player, uint256 score, uint256 xp) internal {
-        // Find existing entry or create new one
-        for (uint256 i = 0; i < leaderboard.length; i++) {
-            if (leaderboard[i].player == player) {
-                // Update existing if better
-                if (score > leaderboard[i].bestScore || xp > leaderboard[i].bestXP) {
-                    leaderboard[i].bestScore = score > leaderboard[i].bestScore ? score : leaderboard[i].bestScore;
-                    leaderboard[i].bestXP = xp > leaderboard[i].bestXP ? xp : leaderboard[i].bestXP;
-                    _sortLeaderboard(i);
-                }
-                emit LeaderboardUpdated(player, leaderboard[i].bestScore, leaderboard[i].bestXP, i);
-                return;
+        uint256 storedIndex = playerLeaderboardIndex[player];
+
+        if (storedIndex != 0) {
+            // Player already on leaderboard — O(1) lookup via mapping
+            uint256 i = storedIndex - 1;
+            if (score > leaderboard[i].bestScore || xp > leaderboard[i].bestXP) {
+                leaderboard[i].bestScore = score > leaderboard[i].bestScore ? score : leaderboard[i].bestScore;
+                leaderboard[i].bestXP = xp > leaderboard[i].bestXP ? xp : leaderboard[i].bestXP;
+                uint256 newIdx = _sortLeaderboard(i);
+                playerLeaderboardIndex[player] = newIdx + 1;
+                i = newIdx;
             }
+            emit LeaderboardUpdated(player, leaderboard[i].bestScore, leaderboard[i].bestXP, i);
+            return;
         }
 
         // New entry
         if (leaderboard.length < MAX_LEADERBOARD_SIZE) {
             leaderboard.push(LeaderboardEntry(player, score, xp));
             uint256 newIndex = leaderboard.length - 1;
-            _sortLeaderboard(newIndex);
+            newIndex = _sortLeaderboard(newIndex);
+            playerLeaderboardIndex[player] = newIndex + 1;
             emit LeaderboardUpdated(player, score, xp, newIndex);
-        } else if (score > leaderboard[leaderboard.length - 1].bestScore ||
-                   xp > leaderboard[leaderboard.length - 1].bestXP) {
-            // Replace lowest entry
-            leaderboard[leaderboard.length - 1] = LeaderboardEntry(player, score, xp);
-            _sortLeaderboard(leaderboard.length - 1);
-            emit LeaderboardUpdated(player, score, xp, leaderboard.length - 1);
+        } else {
+            uint256 lastIdx = leaderboard.length - 1;
+            if (score > leaderboard[lastIdx].bestScore || xp > leaderboard[lastIdx].bestXP) {
+                // Evict the last (lowest) entry from the mapping
+                playerLeaderboardIndex[leaderboard[lastIdx].player] = 0;
+                leaderboard[lastIdx] = LeaderboardEntry(player, score, xp);
+                uint256 newIndex = _sortLeaderboard(lastIdx);
+                playerLeaderboardIndex[player] = newIndex + 1;
+                emit LeaderboardUpdated(player, score, xp, newIndex);
+            }
         }
     }
 
     /**
-     * @notice Sort leaderboard after update (bubble up).
-     * @param idx Index to start sorting from
+     * @notice Bubble entry at idx upward until sorted; keeps playerLeaderboardIndex in sync.
+     * @return Final index the entry settled at.
      */
-    function _sortLeaderboard(uint256 idx) internal {
+    function _sortLeaderboard(uint256 idx) internal returns (uint256) {
         while (idx > 0) {
             uint256 prevIdx = idx - 1;
-            // Sort by score first, then XP
             if (leaderboard[idx].bestScore > leaderboard[prevIdx].bestScore ||
                 (leaderboard[idx].bestScore == leaderboard[prevIdx].bestScore &&
                  leaderboard[idx].bestXP > leaderboard[prevIdx].bestXP)) {
+                // Update mapping for the displaced entry
+                playerLeaderboardIndex[leaderboard[prevIdx].player] = idx + 1;
                 // Swap
                 LeaderboardEntry memory temp = leaderboard[idx];
                 leaderboard[idx] = leaderboard[prevIdx];
@@ -210,6 +221,7 @@ contract SpeedOLightState is Ownable {
                 break;
             }
         }
+        return idx;
     }
 
     // ──────────────── View Functions ───────────────
