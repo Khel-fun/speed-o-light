@@ -22,6 +22,7 @@ export const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
       url: `${env.VITE_SERVER_URL}/trpc`,
+      headers: { "ngrok-skip-browser-warning": "true" },
     }),
   ],
 });
