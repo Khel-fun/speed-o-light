@@ -422,7 +422,7 @@ function SpeedOLight() {
         {gameState !== "PLAYING" && (
           <div
             className={[
-              "absolute inset-0 z-20 flex min-h-full flex-col rounded-[2.5rem] border border-neutral-800 bg-neutral-950/90 p-6 backdrop-blur-md sm:p-8",
+              "absolute inset-0 z-20 flex min-h-full flex-col rounded-[2.5rem] border border-neutral-800 bg-neutral-950/90 p-6 backdrop-blur-md sm:p-8 h-fit",
               verificationSettled
                 ? "items-stretch justify-start px-5 pb-0 pt-5 sm:px-8 sm:pb-0 sm:pt-6"
                 : "items-center justify-center text-center",
