@@ -685,7 +685,7 @@ function SpeedOLight() {
                         type="button"
                         onClick={startNewGame}
                         disabled={!wallet.address || newGameMutation.isPending || isPublishing}
-                        className="flex flex-col items-center justify-center gap-1 rounded-xl border border-neutral-600 bg-neutral-900/60 px-3 py-2.5 text-center text-[11px] font-black uppercase tracking-widest text-white transition-colors hover:border-blue-500 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs"
+                        className="flex flex-col items-center justify-center gap-1 rounded-xl border border-neutral-600 bg-neutral-900/60 px-3 py-2.5 text-center text-[11px] font-black uppercase tracking-widest text-white transition-colors hover:border-blue-500 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs mb-5"
                       >
                         {newGameMutation.isPending ? (
                           <Loader2 className="animate-spin" size={16} />
