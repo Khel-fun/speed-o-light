@@ -84,6 +84,7 @@ export async function registerVk(circuit_name: CircuitKind) {
     proofType: "ultrahonk",
     proofOptions: {
       variant: "Plain",
+      version: "V0_84",
     },
     vk: `${vkey}`,
   };
@@ -170,6 +171,7 @@ export async function verifyProof(
     chainId: chain_id,
     proofOptions: {
       variant: "Plain",
+      version: "V0_84",
     },
     proofData: {
       proof: `${proofHex}`,
