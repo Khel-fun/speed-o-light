@@ -300,20 +300,20 @@ function SpeedOLight() {
   }, [settlement, wallet.address]);
   return (
     <main className="min-h-svh overflow-hidden bg-[#020202] text-white font-sans">
-      <div className="flex min-h-svh w-full flex-col px-4 py-5 sm:px-6 sm:py-6 lg:px-[76px] lg:py-[64px]">
-        <header className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="max-w-full text-[1.6rem] font-black italic leading-none text-white drop-shadow-[0_4px_9px_rgba(255,255,255,0.38)] sm:text-[1.8rem] lg:mt-2 lg:text-[2.25rem]">
+      <div className="flex min-h-svh w-full flex-col px-4 py-0 sm:px-6 sm:py-6 lg:px-[64px] lg:py-[64px]">
+        <header className="-mx-4 flex h-[224px] shrink-0 flex-col items-center gap-[92px] bg-[#020202] px-4 pt-[60px] sm:mx-0 sm:h-auto sm:flex-row sm:items-start sm:justify-between sm:gap-3 sm:bg-transparent sm:p-0">
+          <div className="max-w-full text-center text-[38px] font-black italic leading-none text-white drop-shadow-[0_4px_9px_rgba(255,255,255,0.38)] sm:text-left sm:text-[22px] lg:mt-2">
             SPEED-O-LIGHT
           </div>
 
-          <div className="relative flex flex-col items-start gap-2 sm:items-end">
+          <div className="relative flex flex-col items-center gap-2 sm:items-end">
             <div className="flex flex-wrap items-center gap-2 sm:justify-end">
               {!wallet.address ? (
                 <button
                   type="button"
                   onClick={() => void wallet.connect()}
                   disabled={wallet.isConnecting}
-                  className="inline-flex h-8 items-center justify-center rounded-full border border-white/30 bg-white/7 px-4 font-mono text-[11px] font-medium lowercase text-white transition-colors hover:border-white/55 hover:bg-white/12 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-8 items-center justify-center rounded-full border border-white/55 bg-white/10 px-4 font-mono text-[13px] font-medium lowercase tracking-[0.08em] text-white transition-colors hover:border-white/70 hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40 sm:border-white/30 sm:bg-white/7 sm:text-[11px] sm:tracking-normal"
                 >
                   {wallet.isConnecting ? "connecting..." : "connect wallet"}
                 </button>
@@ -321,9 +321,9 @@ function SpeedOLight() {
                 <button
                   type="button"
                   onClick={() => setShowDisconnectConfirm((open) => !open)}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/25 bg-white/7 px-3 font-mono text-[11px] text-white/75 transition-colors hover:border-white/50 hover:text-white sm:h-[52px] sm:gap-3 sm:border-white/45 sm:bg-[#252525] sm:px-5 sm:text-[20px] sm:font-medium sm:text-white"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/25 bg-white/7 px-3 font-mono text-[11px] text-white/75 transition-colors hover:border-white/50 hover:text-white sm:border-white/45 sm:bg-[#252525] sm:font-medium sm:text-white"
                 >
-                  <CircleUserRound className="size-[13px] sm:size-[30px]" strokeWidth={1.8} />
+                  <CircleUserRound className="size-[13px]" strokeWidth={1.8} />
                   {shortenAddress(wallet.address.toLowerCase(), 6, 4)}
                 </button>
               )}
@@ -363,19 +363,14 @@ function SpeedOLight() {
           </div>
         </header>
 
-        <section
-          className={[
-            "mx-auto flex w-full max-w-[670px] flex-1 flex-col justify-center gap-2 py-6 sm:gap-3 sm:py-8 lg:scale-[0.80] lg:py-0",
-            proofReady ? "lg:translate-y-[6px]" : "lg:-translate-y-[18px]",
-          ].join(" ")}
-        >
+        <section className="mx-auto flex w-full max-w-[480px] flex-1 flex-col justify-start gap-2 pt-5 sm:justify-center sm:gap-3 sm:py-8 lg:-translate-y-[2px] lg:py-0">
           <div className="grid grid-cols-2 items-end gap-3">
             <div>
-              <div className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-white/65 sm:text-[11px] lg:text-[20px]">
+              <div className="mb-1 text-[10px] font-medium uppercase tracking-[0.08em] text-white/65 sm:text-[11px]">
                 Time Remaining
               </div>
               <div
-                className={`font-mono text-[1.75rem] font-black italic leading-none tabular-nums sm:text-[2rem] lg:text-[40px] ${
+                className={`font-mono text-[1.75rem] font-black italic leading-none tabular-nums sm:text-[30px] ${
                   resultState ? "text-[#2c2b37]" : "text-white"
                 }`}
               >
@@ -383,11 +378,11 @@ function SpeedOLight() {
               </div>
             </div>
             <div className="text-right">
-              <div className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-white/65 sm:text-[11px] lg:text-[20px]">
+              <div className="mb-1 text-[10px] font-medium uppercase tracking-[0.08em] text-white/65 sm:text-[11px]">
                 Total XP
               </div>
               <div
-                className={`font-mono text-[1.75rem] font-black italic leading-none tabular-nums sm:text-[2rem] lg:text-[40px] ${
+                className={`font-mono text-[1.75rem] font-black italic leading-none tabular-nums sm:text-[30px] ${
                   resultState ? "text-[#4c00ff]" : "text-white"
                 }`}
               >
@@ -396,7 +391,7 @@ function SpeedOLight() {
             </div>
           </div>
 
-          <div className={`h-1.5 overflow-hidden rounded-full lg:h-[9px] ${resultState ? "bg-white/90" : "bg-white/8"}`}>
+          <div className={`h-[6px] overflow-hidden rounded-full ${resultState ? "bg-white/90" : "bg-white/8"}`}>
             <div
               className={`h-full rounded-full transition-all duration-100 ease-linear ${
                 resultState
@@ -407,8 +402,8 @@ function SpeedOLight() {
             />
           </div>
 
-          <div className="relative mt-1 aspect-square w-full overflow-visible rounded-[18px] border border-white/10 bg-[#050505] shadow-[0_0_28px_rgba(0,0,0,0.75)] sm:mt-2">
-            <div className="grid size-full grid-cols-5 gap-1.5 overflow-hidden rounded-[18px] p-1.5 sm:gap-2 sm:p-2.5 lg:gap-3">
+          <div className="relative mx-auto mt-6 overflow-visible sm:mt-2">
+            <div className="grid grid-cols-5 gap-2.5 rounded-[2rem] border-[3px] border-neutral-800 bg-neutral-900 p-3 shadow-2xl sm:gap-3 sm:rounded-[2.5rem] sm:border-4 sm:p-4">
               {[...Array(GRID_SIZE)].map((_, cellIdx) => {
                 const light = activeLights.find((l) => l.tileIndex === cellIdx);
                 return (
@@ -418,13 +413,13 @@ function SpeedOLight() {
                     onPointerDown={() => light && handleTap(light)}
                     aria-label={`Tile ${cellIdx + 1}`}
                     className={[
-                      "relative flex min-h-0 min-w-0 items-center justify-center overflow-hidden rounded-[8px]",
-                      "transition-all duration-75 disabled:cursor-default",
+                      "relative flex h-[52px] w-[52px] items-center justify-center overflow-hidden rounded-xl transition-all duration-75 sm:h-16 sm:w-16 sm:rounded-2xl",
+                      "disabled:cursor-default",
                       light
                         ? light.isDanger
-                          ? "scale-[1.03] bg-red-500 text-white shadow-[0_0_24px_rgba(239,68,68,0.45)] active:scale-95"
-                          : "scale-[1.03] bg-[#4c00ff] text-white shadow-[0_0_24px_rgba(76,0,255,0.55)] active:scale-95"
-                        : "scale-100 bg-[#0a0a0a] ring-1 ring-white/[0.02]",
+                          ? "scale-105 bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.4)] active:scale-90"
+                          : "scale-105 bg-blue-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.4)] active:scale-90"
+                        : "scale-100 bg-neutral-800/40",
                     ].join(" ")}
                   >
                     {light && (
@@ -450,18 +445,18 @@ function SpeedOLight() {
             {gameState !== "PLAYING" && (
               <div
                 className={[
-                  "absolute inset-0 z-20 flex flex-col items-center rounded-[18px] bg-[#050505]/66 p-4 text-center sm:p-6",
+                  "absolute inset-0 z-20 flex flex-col items-center rounded-[2rem] bg-[#050505]/66 p-4 text-center sm:rounded-[2.5rem] sm:p-6",
                   resultState
-                    ? "justify-start overflow-visible pt-14 sm:pt-[72px] lg:pt-[98px]"
+                    ? "justify-start overflow-hidden px-5 pb-5 pt-6 sm:px-6 sm:pb-6 sm:pt-7"
                     : "justify-center overflow-y-auto",
                 ].join(" ")}
               >
                 {gameState === "IDLE" && (
                   <div className="flex w-full max-w-[330px] flex-col items-center">
-                    <p className="mb-4 text-[1rem] font-medium italic leading-snug text-white sm:text-[1.2rem]">
+                    <p className="mb-3 text-[13px] font-medium italic leading-snug text-white sm:text-[16px]">
                       60s High-Intensity Sprint
                     </p>
-                    <p className="mb-14 text-[1rem] font-medium italic leading-snug text-white sm:text-[1.2rem]">
+                    <p className="mb-11 text-[13px] font-medium italic leading-snug text-white sm:text-[16px]">
                       Avoid the bombs. Harvest the XP.
                     </p>
 
@@ -471,11 +466,11 @@ function SpeedOLight() {
                           type="button"
                           onClick={() => void wallet.connect()}
                           disabled={wallet.isConnecting}
-                          className="inline-flex min-h-14 items-center justify-center rounded-full bg-[#4c00ff] px-7 text-sm font-black uppercase text-white shadow-[0_0_30px_rgba(76,0,255,0.45)] transition-transform hover:scale-[1.02] hover:bg-[#5d16ff] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#4c00ff] px-6 text-[11px] font-black uppercase text-white shadow-[0_0_30px_rgba(76,0,255,0.45)] transition-transform hover:scale-[1.02] hover:bg-[#5d16ff] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           {wallet.isConnecting ? "Connecting..." : "Connect Wallet"}
                         </button>
-                        <p className="mt-5 text-center text-[10px] font-medium uppercase text-[#bda8ff]">
+                        <p className="mt-4 text-center text-[8px] font-medium uppercase text-[#bda8ff]">
                           * Connect your wallet to continue
                         </p>
                       </>
@@ -503,38 +498,38 @@ function SpeedOLight() {
                 )}
 
                 {resultState && (
-                  <div className="flex w-full max-w-[560px] flex-col items-center animate-in fade-in zoom-in duration-300">
+                  <div className="flex w-full max-w-[330px] flex-col items-center animate-in fade-in zoom-in duration-300">
                     <div
-                      className={`absolute left-1/2 top-[-12px] flex size-[56px] -translate-x-1/2 items-center justify-center rounded-full sm:size-[70px] lg:top-[-18px] lg:size-[84px] ${
+                      className={`mb-3 flex size-[50px] items-center justify-center rounded-full sm:size-[56px] ${
                         isWinner
                           ? "bg-lime-500/30 text-lime-300 shadow-[0_0_18px_rgba(132,204,22,0.22)]"
                           : "bg-red-600/35 text-red-400 shadow-[0_0_18px_rgba(220,38,38,0.2)]"
                       }`}
                     >
                       {isWinner ? (
-                        <Trophy className="size-[28px] sm:size-[34px] lg:size-[43px]" />
+                        <Trophy className="size-[25px] sm:size-[28px]" />
                       ) : (
-                        <Bomb className="size-[28px] sm:size-[34px] lg:size-[43px]" />
+                        <Bomb className="size-[25px] sm:size-[28px]" />
                       )}
                     </div>
 
-                    <h2 className="mb-2 text-[1.5rem] font-black uppercase italic leading-none text-white sm:text-[2rem] lg:mb-7 lg:text-[38px]">
+                    <h2 className="mb-2 text-[1.55rem] font-black uppercase italic leading-none text-white sm:text-[1.9rem]">
                       {isWinner ? "Session Complete" : "Terminated"}
                     </h2>
-                    <p className="mb-6 text-[10px] font-medium uppercase tracking-[0.18em] text-white/75 sm:mb-8 sm:text-[14px] lg:mb-[96px] lg:text-[23px]">
+                    <p className="mb-4 text-[10px] font-medium uppercase tracking-[0.18em] text-white/75 sm:mb-5 sm:text-[12px]">
                       {isWinner ? "You survived the match !" : "Fatal contact with danger light"}
                     </p>
 
-                    <div className="mb-6 grid grid-cols-2 gap-4 sm:mb-8 lg:mb-[96px] lg:gap-7">
-                      <div className="flex min-h-[76px] min-w-[104px] flex-col items-center justify-center rounded-[12px] border border-white/15 bg-[#1b1920] px-4 py-3 sm:min-h-[92px] sm:min-w-[116px] lg:min-h-[128px] lg:min-w-[178px]">
-                        <div className="text-[12px] font-medium uppercase tracking-[0.16em] text-white/80 lg:text-[23px]">Total XP</div>
-                        <div className="mt-2 font-mono text-[2rem] font-black italic leading-none text-[#4c00ff] lg:mt-6 lg:text-[40px]">
+                    <div className="mb-3 grid grid-cols-2 gap-3 sm:mb-4">
+                      <div className="flex min-h-[72px] w-[124px] flex-col items-center justify-center rounded-[12px] border border-white/15 bg-[#1b1920] px-3 py-2 sm:w-[138px]">
+                        <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/80 sm:text-[12px]">Total XP</div>
+                        <div className="mt-2 font-mono text-[1.7rem] font-black italic leading-none text-[#4c00ff] sm:text-[1.9rem]">
                           {score * XP_PER_HIT}
                         </div>
                       </div>
-                      <div className="flex min-h-[76px] min-w-[104px] flex-col items-center justify-center rounded-[12px] border border-white/15 bg-[#222222] px-4 py-3 sm:min-h-[92px] sm:min-w-[116px] lg:min-h-[128px] lg:min-w-[178px]">
-                        <div className="text-[12px] font-medium uppercase tracking-[0.16em] text-white/80 lg:text-[23px]">Hits</div>
-                        <div className="mt-2 font-mono text-[2rem] font-black italic leading-none text-white lg:mt-6 lg:text-[40px]">
+                      <div className="flex min-h-[72px] w-[124px] flex-col items-center justify-center rounded-[12px] border border-white/15 bg-[#222222] px-3 py-2 sm:w-[138px]">
+                        <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/80 sm:text-[12px]">Hits</div>
+                        <div className="mt-2 font-mono text-[1.7rem] font-black italic leading-none text-white sm:text-[1.9rem]">
                           {score}
                         </div>
                       </div>
@@ -555,9 +550,9 @@ function SpeedOLight() {
                         </button>
                       </div>
                     ) : proofReady ? (
-                      <div className="flex w-full max-w-[360px] flex-col items-center gap-3 lg:gap-4">
+                      <div className="flex w-full max-w-[300px] flex-col items-center gap-2">
                         <p
-                          className={`text-[18px] font-medium italic lg:text-[22px] ${
+                          className={`text-[13px] font-medium italic sm:text-[17px] ${
                             verificationFailed ? "text-amber-300" : "text-lime-300"
                           }`}
                         >
@@ -574,7 +569,7 @@ function SpeedOLight() {
                               !sessionPlayerAddress ||
                               wallet.address.toLowerCase() !== sessionPlayerAddress.toLowerCase()
                             }
-                            className="inline-flex min-h-12 items-center justify-center rounded-full bg-linear-to-r from-[#c43bf2] to-[#ff7a35] px-7 text-[15px] font-black uppercase tracking-[0.12em] text-white shadow-[0_0_20px_rgba(196,59,242,0.22)] disabled:cursor-not-allowed disabled:opacity-45 lg:min-w-[252px]"
+                            className="inline-flex min-h-9 items-center justify-center rounded-full bg-linear-to-r from-[#c43bf2] to-[#ff7a35] px-5 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-[0_0_20px_rgba(196,59,242,0.22)] disabled:cursor-not-allowed disabled:opacity-45 sm:min-h-12 sm:px-7 sm:text-[15px] lg:min-w-[252px]"
                           >
                             {isPublishing ? "Confirm in wallet..." : "Publish XP Onchain"}
                           </button>
@@ -585,7 +580,7 @@ function SpeedOLight() {
                             href={`https://sepolia.basescan.org/tx/${chainTxHash}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-linear-to-r from-[#c43bf2] to-[#ff7a35] px-7 text-[15px] font-black uppercase tracking-[0.12em] text-white lg:min-w-[252px]"
+                            className="inline-flex min-h-9 items-center justify-center gap-2 rounded-full bg-linear-to-r from-[#c43bf2] to-[#ff7a35] px-5 text-[11px] font-black uppercase tracking-[0.12em] text-white sm:min-h-12 sm:px-7 sm:text-[15px] lg:min-w-[252px]"
                           >
                             <ExternalLink size={12} />
                             View Onchain
@@ -629,18 +624,18 @@ function SpeedOLight() {
               type="button"
               onClick={startNewGame}
               disabled={!wallet.address || newGameMutation.isPending || isPublishing}
-              className="mx-auto mt-3 inline-flex min-h-12 items-center justify-center rounded-full border border-[#7d50ff] px-7 text-[15px] font-black uppercase tracking-[0.12em] text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45 lg:min-w-[165px]"
+              className="mx-auto mt-3 inline-flex min-h-9 items-center justify-center rounded-full border border-[#7d50ff] px-6 text-[11px] font-black uppercase tracking-[0.12em] text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45 sm:min-h-12 sm:px-7 sm:text-[15px] lg:min-w-[165px]"
             >
               {newGameMutation.isPending ? "Starting..." : "New Match"}
             </button>
           ) : !resultState ? (
-            <div className="mt-1 flex w-full flex-wrap items-center justify-center gap-x-20 gap-y-3 text-[10px] font-bold uppercase text-white/65">
+            <div className="mt-6 flex w-full items-center justify-center gap-[72px] text-[11px] font-medium uppercase text-white/85 sm:hidden">
               <div className="flex items-center gap-2">
-                <div className="size-3 rounded-[3px] bg-[#4c00ff] shadow-[0_0_12px_rgba(76,0,255,0.75)]" />
+                <div className="size-5 rounded-[4px] bg-[#4c00ff] shadow-[0_0_10px_rgba(76,0,255,0.75)]" />
                 <span>Reward</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="size-3 rounded-[3px] bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.65)]" />
+                <div className="size-5 rounded-[4px] bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.65)]" />
                 <span>Danger</span>
               </div>
             </div>
