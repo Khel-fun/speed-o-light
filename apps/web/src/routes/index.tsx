@@ -4,7 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Bomb, CircleUserRound, ExternalLink, Loader2, Trophy, Zap } from "lucide-react";
 import { useWallet } from "@/hooks/useWallet";
 import { shortenAddress } from "@/lib/shorten-address";
-import { publishSettlementOnChain, readOnChainPlayerStats } from "@/lib/publish-settlement";
+import { publishSettlementOnChain } from "@/lib/publish-settlement";
 import { trpc } from "@/utils/trpc";
 
 export const Route = createFileRoute("/")({
@@ -33,8 +33,50 @@ type PendingSubmit = {
   tapSequence: Tap[];
   dangerTap: Tap;
 };
+type ChainPublishNotice = {
+  tone: "cancelled" | "error";
+  message: string;
+};
 
 const TERMINAL_STATUSES = ["FINALIZED", "AGGREGATED", "FAILED"];
+
+function walletErrorMessage(err: unknown): string {
+  const details: string[] = [];
+  let current: unknown = err;
+
+  while (current && typeof current === "object") {
+    const o = current as { code?: unknown; message?: unknown; shortMessage?: unknown; cause?: unknown };
+    if (typeof o.code === "number") details.push(String(o.code));
+    if (typeof o.shortMessage === "string") details.push(o.shortMessage);
+    if (typeof o.message === "string") details.push(o.message);
+    current = o.cause;
+  }
+
+  if (err instanceof Error && err.message) details.push(err.message);
+  return details.join(" ");
+}
+
+function normalizeChainPublishError(err: unknown): ChainPublishNotice {
+  const message = walletErrorMessage(err);
+
+  if (
+    /\b4001\b/.test(message) ||
+    /user rejected/i.test(message) ||
+    /rejected the request/i.test(message) ||
+    /request rejected/i.test(message) ||
+    /denied transaction signature/i.test(message)
+  ) {
+    return {
+      tone: "cancelled",
+      message: "Transaction signing was cancelled.",
+    };
+  }
+
+  return {
+    tone: "error",
+    message: err instanceof Error && err.message ? err.message : "On-chain publish failed.",
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -48,14 +90,8 @@ function SpeedOLight() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isWinner, setIsWinner] = useState(false);
   const [chainTxHash, setChainTxHash] = useState<`0x${string}` | null>(null);
-  const [chainPublishError, setChainPublishError] = useState<string | null>(null);
+  const [chainPublishNotice, setChainPublishNotice] = useState<ChainPublishNotice | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [onChainStats, setOnChainStats] = useState<{
-    totalXP: bigint;
-    gamesPlayed: bigint;
-    gamesWon: bigint;
-    bestScore: bigint;
-  } | null>(null);
   /** Wallet address this session was started with (must match for on-chain publish). */
   const [sessionPlayerAddress, setSessionPlayerAddress] = useState<string | null>(null);
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
@@ -185,8 +221,7 @@ function SpeedOLight() {
     playerAddrRef.current = addr;
     submitMutation.reset();
     setChainTxHash(null);
-    setChainPublishError(null);
-    setOnChainStats(null);
+    setChainPublishNotice(null);
     setSessionId(null);
     setSessionPlayerAddress(null);
     setIsWinner(false);
@@ -206,8 +241,7 @@ function SpeedOLight() {
       {
         onSuccess: ({ sessionId: id, gridSequence }) => {
           setChainTxHash(null);
-          setChainPublishError(null);
-          setOnChainStats(null);
+          setChainPublishNotice(null);
           setSessionPlayerAddress(addr);
 
           const now = Date.now();
@@ -235,8 +269,7 @@ function SpeedOLight() {
     setTimeLeft(SESSION_LIMIT);
     setSessionId(null);
     setChainTxHash(null);
-    setChainPublishError(null);
-    setOnChainStats(null);
+    setChainPublishNotice(null);
     setSessionPlayerAddress(null);
     submitMutation.reset();
   }, [submitMutation]);
@@ -291,15 +324,13 @@ function SpeedOLight() {
 
   const publishToChain = useCallback(async () => {
     if (!settlement || !wallet.address) return;
-    setChainPublishError(null);
+    setChainPublishNotice(null);
     setIsPublishing(true);
     try {
       const hash = await publishSettlementOnChain(settlement, wallet.address as `0x${string}`);
       setChainTxHash(hash);
-      const stats = await readOnChainPlayerStats(wallet.address as `0x${string}`);
-      setOnChainStats(stats);
     } catch (e) {
-      setChainPublishError(e instanceof Error ? e.message : "On-chain publish failed.");
+      setChainPublishNotice(normalizeChainPublishError(e));
     } finally {
       setIsPublishing(false);
     }
@@ -586,22 +617,24 @@ function SpeedOLight() {
                             href={`https://sepolia.basescan.org/tx/${chainTxHash}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex min-h-9 items-center justify-center gap-2 rounded-full bg-linear-to-r from-[#c43bf2] to-[#ff7a35] px-5 text-[11px] font-black uppercase tracking-[0.12em] text-white sm:min-h-12 sm:px-7 sm:text-[15px] lg:min-w-[252px]"
+                            className="inline-flex items-center justify-center gap-2 px-1 py-2 text-[11px] font-black uppercase tracking-[0.12em] transition-opacity hover:opacity-80 sm:text-[15px]"
                           >
-                            <ExternalLink size={12} />
-                            View Onchain
+                            <ExternalLink size={12} className="text-[#ff7a35]" />
+                            <span className="bg-linear-to-r from-[#c43bf2] to-[#ff7a35] bg-clip-text text-transparent">
+                              View Onchain
+                            </span>
                           </a>
                         )}
 
-                        {chainPublishError && (
-                          <p className="max-w-[240px] text-[10px] leading-snug text-red-300">
-                            {chainPublishError}
-                          </p>
-                        )}
-
-                        {onChainStats && chainTxHash && (
-                          <p className="font-mono text-[10px] text-white/45">
-                            {onChainStats.totalXP.toString()} total XP onchain
+                        {chainPublishNotice && (
+                          <p
+                            className={`max-w-[240px] rounded-[8px] border px-3 py-2 text-center text-[10px] font-medium leading-snug ${
+                              chainPublishNotice.tone === "cancelled"
+                                ? "border-amber-300/25 bg-amber-300/8 text-amber-200"
+                                : "border-red-400/25 bg-red-500/8 text-red-200"
+                            }`}
+                          >
+                            {chainPublishNotice.message}
                           </p>
                         )}
 
