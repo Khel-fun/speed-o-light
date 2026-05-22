@@ -180,11 +180,25 @@ function SpeedOLight() {
   const startNewGame = useCallback(() => {
     const addr = wallet.address?.trim() ?? "";
     if (!addr) return;
+    isPlayingRef.current = false;
+    if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     playerAddrRef.current = addr;
     submitMutation.reset();
     setChainTxHash(null);
     setChainPublishError(null);
     setOnChainStats(null);
+    setSessionId(null);
+    setSessionPlayerAddress(null);
+    setIsWinner(false);
+    setScore(0);
+    setTimeLeft(SESSION_LIMIT);
+    aliveRef.current = [];
+    setActiveLights([]);
+    tapRecord.current = new Array(136).fill(false);
+    dangerTapRef.current = null;
+    spawnIndexRef.current = 0;
+    pendingSubmitRef.current = null;
+    sessionIdRef.current = null;
     setGameState("STARTING");
 
     newGameMutation.mutate(
@@ -195,11 +209,6 @@ function SpeedOLight() {
           setChainPublishError(null);
           setOnChainStats(null);
           setSessionPlayerAddress(addr);
-          tapRecord.current = new Array(136).fill(false);
-          dangerTapRef.current = null;
-          spawnIndexRef.current = 0;
-          aliveRef.current = [];
-          pendingSubmitRef.current = null;
 
           const now = Date.now();
           startTimeRef.current = now;
@@ -208,9 +217,6 @@ function SpeedOLight() {
           sessionIdRef.current = id;
 
           setSessionId(id);
-          setScore(0);
-          setTimeLeft(SESSION_LIMIT);
-          setActiveLights([]);
           isPlayingRef.current = true;
           setGameState("PLAYING");
         },
