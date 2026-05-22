@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Bomb, ExternalLink, Loader2, LogOut, Play, ShieldCheck, Timer, Trophy, Wallet, Zap } from "lucide-react";
-import { shortenAddress, useWallet } from "@/hooks/useWallet";
+import { Bomb, CircleUserRound, ExternalLink, Loader2, Trophy, Zap } from "lucide-react";
+import { useWallet } from "@/hooks/useWallet";
+import { shortenAddress } from "@/lib/shorten-address";
 import { publishSettlementOnChain, readOnChainPlayerStats } from "@/lib/publish-settlement";
 import { trpc } from "@/utils/trpc";
 
@@ -35,17 +36,6 @@ type PendingSubmit = {
 
 const TERMINAL_STATUSES = ["FINALIZED", "AGGREGATED", "FAILED"];
 
-const VERIFICATION_LABELS: Record<string, string> = {
-  QUEUED: "Proof queued...",
-  VALID: "Proof valid...",
-  SUBMITTED: "Submitted to verifier...",
-  INCLUDED_IN_BLOCK: "Included in block...",
-  FINALIZED: "Proofs verified. Fairness locked.",
-  AGGREGATION_PENDING: "Aggregation pending...",
-  AGGREGATED: "Proofs verified. Fairness locked.",
-  FAILED: "Verification failed.",
-};
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -68,6 +58,7 @@ function SpeedOLight() {
   } | null>(null);
   /** Wallet address this session was started with (must match for on-chain publish). */
   const [sessionPlayerAddress, setSessionPlayerAddress] = useState<string | null>(null);
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
 
   // Refs hold mutable game state so the RAF loop is always fresh
   const isPlayingRef = useRef(false);
@@ -189,11 +180,25 @@ function SpeedOLight() {
   const startNewGame = useCallback(() => {
     const addr = wallet.address?.trim() ?? "";
     if (!addr) return;
+    isPlayingRef.current = false;
+    if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     playerAddrRef.current = addr;
     submitMutation.reset();
     setChainTxHash(null);
     setChainPublishError(null);
     setOnChainStats(null);
+    setSessionId(null);
+    setSessionPlayerAddress(null);
+    setIsWinner(false);
+    setScore(0);
+    setTimeLeft(SESSION_LIMIT);
+    aliveRef.current = [];
+    setActiveLights([]);
+    tapRecord.current = new Array(136).fill(false);
+    dangerTapRef.current = null;
+    spawnIndexRef.current = 0;
+    pendingSubmitRef.current = null;
+    sessionIdRef.current = null;
     setGameState("STARTING");
 
     newGameMutation.mutate(
@@ -204,11 +209,6 @@ function SpeedOLight() {
           setChainPublishError(null);
           setOnChainStats(null);
           setSessionPlayerAddress(addr);
-          tapRecord.current = new Array(136).fill(false);
-          dangerTapRef.current = null;
-          spawnIndexRef.current = 0;
-          aliveRef.current = [];
-          pendingSubmitRef.current = null;
 
           const now = Date.now();
           startTimeRef.current = now;
@@ -217,9 +217,6 @@ function SpeedOLight() {
           sessionIdRef.current = id;
 
           setSessionId(id);
-          setScore(0);
-          setTimeLeft(SESSION_LIMIT);
-          setActiveLights([]);
           isPlayingRef.current = true;
           setGameState("PLAYING");
         },
@@ -244,6 +241,12 @@ function SpeedOLight() {
     submitMutation.reset();
   }, [submitMutation]);
 
+  const confirmDisconnect = useCallback(() => {
+    resetToIdle();
+    wallet.disconnect();
+    setShowDisconnectConfirm(false);
+  }, [resetToIdle, wallet]);
+
   // ---------------------------------------------------------------------------
   // Effects
   // ---------------------------------------------------------------------------
@@ -256,6 +259,10 @@ function SpeedOLight() {
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     };
   }, [gameState, update]);
+
+  useEffect(() => {
+    if (!wallet.address) setShowDisconnectConfirm(false);
+  }, [wallet.address]);
 
   // Auto-submit once the game finishes; pendingSubmitRef is nulled after first run
   useEffect(() => {
@@ -271,24 +278,13 @@ function SpeedOLight() {
   // Derived verification state
   // ---------------------------------------------------------------------------
   const verificationStatus = statusQuery.data?.verificationStatus ?? null;
-  /** Kurier fully finished (or aggregated). */
-  const verificationFullyDone =
-    verificationStatus === "FINALIZED" || verificationStatus === "AGGREGATED";
   const verificationFailed = verificationStatus === "FAILED";
-  /**
-   * Spinner only until we have a job status beyond Kurier queue.
-   * After `SUBMITTED` the proof worker is done; FINALIZED can lag minutes — user can publish meanwhile.
-   */
-  const verificationPending =
-    gameState === "VERIFYING" &&
-    (verificationStatus == null || verificationStatus === "QUEUED");
   const verificationSettled =
     gameState === "VERIFYING" &&
     verificationStatus != null &&
     verificationStatus !== "QUEUED";
-  const verificationLabel = verificationStatus
-    ? (VERIFICATION_LABELS[verificationStatus] ?? "Verifying...")
-    : "Generating proof...";
+  const resultState = gameState === "FINISHED" || gameState === "VERIFYING";
+  const proofReady = gameState === "VERIFYING" && verificationSettled;
 
   const settlement =
     submitMutation.data?.settlement ?? statusQuery.data?.settlement ?? null;
@@ -309,414 +305,349 @@ function SpeedOLight() {
     }
   }, [settlement, wallet.address]);
   return (
-    <div className="min-h-screen bg-neutral-950 text-white flex flex-col items-center justify-center p-6 font-sans">
-
-      {/* Shell: width follows the game board so HUD / progress / legend line up with the card */}
-      <div className="mx-auto inline-flex max-w-[calc(100vw-3rem)] flex-col items-stretch gap-4">
-      {/* Wallet */}
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        {!wallet.address ? (
-          <button
-            type="button"
-            onClick={() => void wallet.connect()}
-            disabled={wallet.isConnecting || !wallet.hasInjectedProvider}
-            className="inline-flex items-center gap-2 rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:border-blue-500 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Wallet size={16} />
-            {wallet.isConnecting ? "Connecting…" : "Connect wallet"}
-          </button>
-        ) : (
-          <>
-            <span className="rounded-full border border-neutral-800 bg-neutral-900 px-3 py-1.5 font-mono text-xs text-neutral-300">
-              {shortenAddress(wallet.address)}
-            </span>
-            <button
-              type="button"
-              onClick={wallet.disconnect}
-              disabled={gameState === "PLAYING" || gameState === "STARTING"}
-              className="inline-flex items-center gap-1.5 rounded-full border border-neutral-700 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-neutral-400 transition-colors hover:border-red-500/60 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <LogOut size={14} />
-              Disconnect
-            </button>
-          </>
-        )}
-      </div>
-      {!wallet.hasInjectedProvider && (
-        <p className="text-right text-[11px] text-amber-500/90">
-          No injected wallet detected. Use a browser with MetaMask (or similar).
-        </p>
-      )}
-      {wallet.error && (
-        <p className="text-right text-[11px] text-red-400">{wallet.error}</p>
-      )}
-
-      {/* HUD */}
-      <div className="flex justify-between items-end gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-neutral-500 text-xs font-bold uppercase tracking-widest mb-1">
-            <Timer size={14} className="text-blue-500" />
-            Time Remaining
+    <main className="min-h-svh overflow-hidden bg-[#020202] text-white font-sans">
+      <div className="flex min-h-svh w-full flex-col px-4 py-0 sm:px-6 sm:py-6 lg:px-[64px] lg:py-[64px]">
+        <header className="-mx-4 flex h-[224px] shrink-0 flex-col items-center gap-[92px] bg-[#020202] px-4 pt-[60px] sm:mx-0 sm:h-auto sm:flex-row sm:items-start sm:justify-between sm:gap-3 sm:bg-transparent sm:p-0">
+          <div className="max-w-full text-center text-[38px] font-black italic leading-none text-white drop-shadow-[0_4px_9px_rgba(255,255,255,0.38)] sm:text-left sm:text-[22px] lg:mt-2">
+            SPEED-O-LIGHT
           </div>
-          <div className="text-3xl font-mono font-black italic">
-            {(timeLeft / 1000).toFixed(2)}s
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-neutral-500 text-xs font-bold uppercase tracking-widest mb-1">Total XP</div>
-          <div className="text-4xl font-mono font-black text-blue-500 tabular-nums">
-            {(score * XP_PER_HIT).toString().padStart(3, "0")}
-          </div>
-        </div>
-      </div>
 
-      {/* Session progress bar */}
-      <div className="h-1.5 bg-neutral-900 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-blue-600 transition-all duration-100 ease-linear"
-          style={{ width: `${(timeLeft / SESSION_LIMIT) * 100}%` }}
-        />
-      </div>
-
-      {/* Game board */}
-      <div className="relative">
-        <div className="grid grid-cols-5 gap-3 p-4 bg-neutral-900 rounded-[2.5rem] border-4 border-neutral-800 shadow-2xl">
-          {[...Array(GRID_SIZE)].map((_, cellIdx) => {
-            const light = activeLights.find((l) => l.tileIndex === cellIdx);
-            return (
-              <button
-                key={cellIdx}
-                disabled={gameState !== "PLAYING"}
-                onPointerDown={() => light && handleTap(light)}
-                className={[
-                  "w-14 h-14 sm:w-16 sm:h-16 rounded-2xl transition-all duration-75 relative",
-                  "flex items-center justify-center overflow-hidden",
-                  light
-                    ? light.isDanger
-                      ? "bg-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] scale-105 active:scale-90"
-                      : "bg-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.4)] scale-105 active:scale-90"
-                    : "bg-neutral-800/40 scale-100",
-                ].join(" ")}
-              >
-                {light && (
-                  <>
-                    <div className="relative z-10 animate-in zoom-in duration-150">
-                      {light.isDanger ? (
-                        <Bomb size={24} />
-                      ) : (
-                        <Zap size={24} fill="currentColor" />
-                      )}
-                    </div>
-                    <div
-                      className="absolute inset-0 bg-white/20 origin-left"
-                      style={{ animation: `shrink ${GLOW_DURATION}ms linear forwards` }}
-                    />
-                  </>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Overlay (shown in all non-PLAYING states) */}
-        {gameState !== "PLAYING" && (
-          <div
-            className={[
-              "absolute inset-0 z-20 flex min-h-full flex-col rounded-[2.5rem] border border-neutral-800 bg-neutral-950/90 p-6 backdrop-blur-md sm:p-8 h-fit",
-              verificationSettled
-                ? "items-stretch justify-start px-5 pb-0 pt-5 sm:px-8 sm:pb-0 sm:pt-6"
-                : "items-center justify-center text-center",
-            ].join(" ")}
-          >
-
-            {/* IDLE */}
-            {gameState === "IDLE" && (
-              <>
-                <h1 className="text-4xl font-black italic tracking-tighter mb-2">SPEED-O-LIGHT</h1>
-                <p className="text-neutral-400 text-sm mb-6 max-w-[240px]">
-                  60s High-Intensity Sprint.<br />Avoid the bombs, harvest the XP.
-                </p>
-                {!wallet.address ? (
-                  <button
-                    type="button"
-                    onClick={() => void wallet.connect()}
-                    disabled={wallet.isConnecting || !wallet.hasInjectedProvider}
-                    className="mb-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-neutral-700 bg-neutral-900 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:border-blue-500 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <Wallet size={18} />
-                    {wallet.isConnecting ? "Connecting…" : "Connect wallet to play"}
-                  </button>
-                ) : (
-                  <p className="mb-4 w-full rounded-full border border-neutral-800 bg-neutral-900/80 px-4 py-2 text-center font-mono text-xs text-neutral-400">
-                    Playing as {shortenAddress(wallet.address, 8, 6)}
-                  </p>
-                )}
+          <div className="relative flex flex-col items-center gap-2 sm:items-end">
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              {!wallet.address ? (
                 <button
                   type="button"
-                  onClick={startNewGame}
-                  disabled={!wallet.address || newGameMutation.isPending}
-                  className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-black px-10 py-4 rounded-full flex items-center gap-2 transition-transform active:scale-95"
+                  onClick={() => void wallet.connect()}
+                  disabled={wallet.isConnecting}
+                  className="inline-flex h-8 items-center justify-center rounded-full border border-white/55 bg-white/10 px-4 font-mono text-[13px] font-medium lowercase tracking-[0.08em] text-white transition-colors hover:border-white/70 hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40 sm:border-white/30 sm:bg-white/7 sm:text-[11px] sm:tracking-normal"
                 >
-                  <Play size={20} fill="currentColor" /> START MATCH
+                  {wallet.isConnecting ? "connecting..." : "connect wallet"}
                 </button>
-              </>
-            )}
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowDisconnectConfirm((open) => !open)}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/25 bg-white/7 px-3 font-mono text-[11px] text-white/75 transition-colors hover:border-white/50 hover:text-white sm:border-white/45 sm:bg-[#252525] sm:font-medium sm:text-white"
+                >
+                  <CircleUserRound className="size-[13px]" strokeWidth={1.8} />
+                  {shortenAddress(wallet.address.toLowerCase(), 6, 4)}
+                </button>
+              )}
+            </div>
 
-            {/* STARTING */}
-            {gameState === "STARTING" && (
-              <div className="text-neutral-400 text-sm font-bold uppercase tracking-widest animate-pulse">
-                Initializing sequence...
+            {showDisconnectConfirm && wallet.address && (
+              <div className="absolute left-0 top-[calc(100%+12px)] z-50 w-[310px] rounded-[8px] border border-white/25 bg-[#202020] px-6 py-5 text-center text-white shadow-[0_18px_70px_rgba(0,0,0,0.62)] sm:left-auto sm:right-0 sm:top-[calc(100%+16px)]">
+                <div className="absolute -top-[5px] left-8 size-2.5 rotate-45 border-l border-t border-white/25 bg-[#202020] sm:left-auto sm:right-12" />
+                <h2 className="text-[17px] font-medium leading-none">Disconnect Wallet?</h2>
+                <p className="mt-3 text-[12px] leading-snug text-white/62">
+                  You may lose your progress in the match.
+                </p>
+                <div className="mt-6 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.08em]">
+                  <button
+                    type="button"
+                    onClick={() => setShowDisconnectConfirm(false)}
+                    className="rounded-full px-2 py-1 text-white transition-colors hover:text-white/70"
+                  >
+                    CANCEL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmDisconnect}
+                    className="rounded-full px-2 py-1 text-red-400 transition-colors hover:text-red-300"
+                  >
+                    DISCONNECT
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* FINISHED / VERIFYING */}
-            {(gameState === "FINISHED" || gameState === "VERIFYING") && (
+            {wallet.error && (
+              <p className="max-w-[280px] text-[11px] leading-snug text-red-300 sm:text-right">
+                {wallet.error}
+              </p>
+            )}
+          </div>
+        </header>
+
+        <section className="mx-auto flex w-full max-w-[480px] flex-1 flex-col justify-start gap-2 pt-5 sm:justify-center sm:gap-3 sm:py-8 lg:-translate-y-[2px] lg:py-0">
+          <div className="grid grid-cols-2 items-end gap-3">
+            <div>
+              <div className="mb-1 text-[10px] font-medium uppercase tracking-[0.08em] text-white/65 sm:text-[11px]">
+                Time Remaining
+              </div>
+              <div
+                className={`font-mono text-[1.75rem] font-black italic leading-none tabular-nums sm:text-[30px] ${
+                  resultState ? "text-[#2c2b37]" : "text-white"
+                }`}
+              >
+                {(timeLeft / 1000).toFixed(2)} s
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="mb-1 text-[10px] font-medium uppercase tracking-[0.08em] text-white/65 sm:text-[11px]">
+                Total XP
+              </div>
+              <div
+                className={`font-mono text-[1.75rem] font-black italic leading-none tabular-nums sm:text-[30px] ${
+                  resultState ? "text-[#4c00ff]" : "text-white"
+                }`}
+              >
+                {(score * XP_PER_HIT).toString().padStart(3, "0")}
+              </div>
+            </div>
+          </div>
+
+          <div className={`h-[6px] overflow-hidden rounded-full ${resultState ? "bg-white/90" : "bg-white/8"}`}>
+            <div
+              className={`h-full rounded-full transition-all duration-100 ease-linear ${
+                resultState
+                  ? "bg-[#4c00ff]/45"
+                  : "bg-[#4c00ff] shadow-[0_0_18px_rgba(76,0,255,0.7)]"
+              }`}
+              style={{ width: `${(timeLeft / SESSION_LIMIT) * 100}%` }}
+            />
+          </div>
+
+          <div className="relative mx-auto mt-6 overflow-visible sm:mt-2">
+            <div className="grid grid-cols-5 gap-2.5 rounded-[2rem] border-[3px] border-neutral-800 bg-neutral-900 p-3 shadow-2xl sm:gap-3 sm:rounded-[2.5rem] sm:border-4 sm:p-4">
+              {[...Array(GRID_SIZE)].map((_, cellIdx) => {
+                const light = activeLights.find((l) => l.tileIndex === cellIdx);
+                return (
+                  <button
+                    key={cellIdx}
+                    disabled={gameState !== "PLAYING"}
+                    onPointerDown={() => light && handleTap(light)}
+                    aria-label={`Tile ${cellIdx + 1}`}
+                    className={[
+                      "relative flex h-[52px] w-[52px] items-center justify-center overflow-hidden rounded-xl transition-all duration-75 sm:h-16 sm:w-16 sm:rounded-2xl",
+                      "disabled:cursor-default",
+                      light
+                        ? light.isDanger
+                          ? "scale-105 bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.4)] active:scale-90"
+                          : "scale-105 bg-blue-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.4)] active:scale-90"
+                        : "scale-100 bg-neutral-800/40",
+                    ].join(" ")}
+                  >
+                    {light && (
+                      <>
+                        <div className="relative z-10 animate-in zoom-in duration-150">
+                          {light.isDanger ? (
+                            <Bomb size={24} />
+                          ) : (
+                            <Zap size={24} fill="currentColor" />
+                          )}
+                        </div>
+                        <div
+                          className="absolute inset-0 origin-left bg-white/20"
+                          style={{ animation: `shrink ${GLOW_DURATION}ms linear forwards` }}
+                        />
+                      </>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {gameState !== "PLAYING" && (
               <div
                 className={[
-                  "animate-in fade-in zoom-in duration-300 flex w-full flex-col",
-                  verificationSettled ? "min-h-0 flex-1" : "",
+                  "absolute inset-0 z-20 flex flex-col items-center rounded-[2rem] bg-[#050505]/66 p-4 text-center sm:rounded-[2.5rem] sm:p-6",
+                  resultState
+                    ? "justify-start overflow-hidden px-5 pb-5 pt-6 sm:px-6 sm:pb-6 sm:pt-7"
+                    : "justify-center overflow-y-auto",
                 ].join(" ")}
               >
-                {verificationSettled ? (
-                  <>
-                    <div className="min-h-0 flex-1 shrink basis-0" aria-hidden />
-                    <div className="flex shrink-0 flex-col items-center text-center">
-                      <div
-                        className={`mx-auto mb-3 w-16 h-16 rounded-full flex items-center justify-center ${isWinner ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"}`}
-                      >
-                        {isWinner ? <Trophy size={32} /> : <Bomb size={32} />}
-                      </div>
-                      <h2 className="text-3xl font-black mb-1">
-                        {isWinner ? "SESSION COMPLETE" : "TERMINATED"}
-                      </h2>
-                      <p className="text-neutral-400 text-sm mb-0">
-                        {isWinner
-                          ? "You survived the full session!"
-                          : "Fatal contact with danger light."}
-                      </p>
-                    </div>
-                    <div className="min-h-0 flex-1 shrink basis-0" aria-hidden />
-                  </>
-                ) : (
-                  <>
-                    <div
-                      className={`mx-auto mb-4 w-16 h-16 rounded-full flex items-center justify-center ${isWinner ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"}`}
-                    >
-                      {isWinner ? <Trophy size={32} /> : <Bomb size={32} />}
-                    </div>
-                    <h2 className="text-3xl font-black mb-1">
-                      {isWinner ? "SESSION COMPLETE" : "TERMINATED"}
-                    </h2>
-                    <p className="text-neutral-400 text-sm mb-6">
-                      {isWinner
-                        ? "You survived the full session!"
-                        : "Fatal contact with danger light."}
+                {gameState === "IDLE" && (
+                  <div className="flex w-full max-w-[330px] flex-col items-center">
+                    <p className="mb-3 text-[13px] font-medium italic leading-snug text-white sm:text-[16px]">
+                      60s High-Intensity Sprint
                     </p>
-                  </>
-                )}
-
-                <div
-                  className={`grid grid-cols-2 gap-4 ${verificationSettled ? "mb-3" : "mb-6"}`}
-                >
-                  <div className="bg-neutral-900 p-3 rounded-xl border border-neutral-800">
-                    <div className="text-[10px] uppercase font-bold text-neutral-500">Total XP</div>
-                    <div className="text-2xl font-black text-blue-500">{score * XP_PER_HIT}</div>
-                  </div>
-                  <div className="bg-neutral-900 p-3 rounded-xl border border-neutral-800">
-                    <div className="text-[10px] uppercase font-bold text-neutral-500">Hits</div>
-                    <div className="text-2xl font-black text-white">{score}</div>
-                  </div>
-                </div>
-
-                {/* Submitting to server / submit error */}
-                {gameState === "FINISHED" && submitMutation.isPending && (
-                  <div className="mb-6 w-full rounded-2xl border border-blue-500/20 bg-blue-950/15 p-4 text-left">
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-blue-300 mb-2">
-                      <Loader2 className="animate-spin shrink-0" size={16} />
-                      Recording session
-                    </div>
-                    <p className="text-[13px] text-neutral-400 leading-snug">
-                      Sending your taps to the server and opening a proof job. Almost there…
+                    <p className="mb-11 text-[13px] font-medium italic leading-snug text-white sm:text-[16px]">
+                      Avoid the bombs. Harvest the XP.
                     </p>
-                  </div>
-                )}
-                {gameState === "FINISHED" && submitMutation.isError && (
-                  <div className="mb-6 w-full rounded-2xl border border-red-500/30 bg-red-950/20 p-4 text-left">
-                    <div className="text-xs font-black uppercase tracking-widest text-red-300 mb-2">
-                      Could not submit session
-                    </div>
-                    <p className="text-[13px] text-red-200/90 leading-relaxed mb-3">
-                      {submitMutation.error?.message ??
-                        "The server rejected this session. Check the API logs, run `pnpm db:seed`, and ensure Redis is running."}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={resetToIdle}
-                      className="w-full rounded-full border border-neutral-600 py-2.5 text-xs font-bold text-white hover:bg-neutral-800"
-                    >
-                      Dismiss and return to menu
-                    </button>
-                  </div>
-                )}
 
-                {/* Background proof verification (before on-chain step) */}
-                {verificationPending && (
-                  <div className="mb-6 w-full rounded-2xl border border-blue-500/30 bg-linear-to-b from-blue-950/30 to-neutral-950/40 p-5 text-left shadow-[0_0_24px_rgba(59,130,246,0.08)]">
-                    <div className="flex items-center gap-2 mb-1">
-                      <ShieldCheck className="text-blue-400 shrink-0" size={20} />
-                      <span className="text-xs font-black uppercase tracking-widest text-blue-200">
-                        Verifying fairness
-                      </span>
-                    </div>
-                    <p className="text-[13px] text-neutral-400 leading-relaxed mb-4">
-                      A zero-knowledge proof is being generated and checked in the background (Kurier). When it
-                      finishes, you can publish XP on-chain or start a new game—whatever you prefer.
-                    </p>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-800/90 mb-3">
-                      <div
-                        className="h-full w-2/5 rounded-full bg-blue-500/90"
-                        style={{ animation: "verifyBar 2.2s ease-in-out infinite" }}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
-                      <span className="inline-block size-1.5 rounded-full bg-blue-400 animate-pulse" />
-                      {verificationLabel}
-                    </div>
-                  </div>
-                )}
-
-                {/* After verification: publish and/or new game (peer choices) */}
-                {gameState === "VERIFYING" && verificationSettled && (
-                  <div className="flex w-full shrink-0 flex-col animate-in fade-in duration-500">
-                    <div className="shrink-0">
-                    <div
-                      className={`mb-2 rounded-xl border px-3 py-2.5 text-center text-[12px] font-medium leading-snug sm:px-4 sm:text-[13px] ${
-                        verificationFullyDone
-                          ? "border-green-500/30 bg-green-950/25 text-green-200/95"
-                          : verificationFailed
-                            ? "border-amber-500/25 bg-amber-950/20 text-amber-100/90"
-                            : "border-sky-500/25 bg-sky-950/20 text-sky-100/90"
-                      }`}
-                    >
-                      {verificationFullyDone
-                        ? "Proof verification finished — fairness is locked in for this session."
-                        : verificationFailed
-                          ? "Proof pipeline did not fully succeed, but your session was still recorded. You can publish signed XP or move on to a new game."
-                          : "Proof is submitted to Kurier. Deeper checks may still run on-chain; you can publish signed XP or start a new game whenever you are ready."}
-                    </div>
-
-                    {!settlement && (
-                      <p className="mb-3 text-center text-[11px] text-neutral-500 sm:text-[12px]">
-                        Settlement payload is unavailable. You can still start a new game below.
-                      </p>
-                    )}
-
-                    {settlement && (
-                      <p className="mb-0 text-center font-mono text-[10px] text-neutral-500 sm:text-[11px]">
-                        {settlement.score} hits · {settlement.xpEarned} XP · {settlement.won ? "survived" : "out"}
-                      </p>
-                    )}
-                    </div>
-
-                    <div className="grid w-full shrink-0 grid-cols-1 items-stretch gap-2 pt-1 sm:grid-cols-2 sm:gap-2 sm:pt-2">
-                      <div className="flex flex-col rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-2.5 sm:p-3">
-                        <p className="shrink-0 text-center text-[9px] font-bold uppercase tracking-widest text-emerald-400/90 sm:text-[10px]">
-                          On-chain (Base Sepolia)
+                    {!wallet.address ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => void wallet.connect()}
+                          disabled={wallet.isConnecting}
+                          className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#4c00ff] px-6 text-[11px] font-black uppercase text-white shadow-[0_0_30px_rgba(76,0,255,0.45)] transition-transform hover:scale-[1.02] hover:bg-[#5d16ff] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {wallet.isConnecting ? "Connecting..." : "Connect Wallet"}
+                        </button>
+                        <p className="mt-4 text-center text-[8px] font-medium uppercase text-[#bda8ff]">
+                          * Connect your wallet to continue
                         </p>
-                        <div className="flex flex-col items-center justify-center gap-1.5 pt-1">
-                        {!settlement ? (
-                          <p className="text-center text-[11px] text-neutral-500">Nothing to publish for this session.</p>
-                        ) : !chainTxHash ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => void publishToChain()}
-                              disabled={
-                                isPublishing ||
-                                !wallet.address ||
-                                !sessionPlayerAddress ||
-                                wallet.address.toLowerCase() !== sessionPlayerAddress.toLowerCase()
-                              }
-                              className="flex w-full items-center justify-center gap-1.5 rounded-full bg-emerald-600 py-2 text-[10px] font-black uppercase tracking-widest text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40 sm:py-2.5 sm:text-[11px]"
-                            >
-                              {isPublishing ? (
-                                <>
-                                  <Loader2 className="animate-spin" size={16} />
-                                  Confirm in wallet…
-                                </>
-                              ) : (
-                                "Publish XP"
-                              )}
-                            </button>
-                            {chainPublishError && (
-                              <p className="text-center text-[11px] text-red-400">{chainPublishError}</p>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            <p className="text-center text-xs text-emerald-300/90">Published on-chain.</p>
-                            <a
-                              href={`https://sepolia.basescan.org/tx/${chainTxHash}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="flex w-full items-center justify-center gap-1.5 rounded-full border border-emerald-600/50 bg-emerald-950/40 py-2 text-[10px] font-bold text-emerald-400 hover:bg-emerald-950/60 sm:text-[11px]"
-                            >
-                              <ExternalLink size={14} />
-                              View on Basescan
-                            </a>
-                            {onChainStats && (
-                              <div className="mt-2 grid w-full grid-cols-2 gap-2 border-t border-emerald-900/40 pt-3 text-center text-[10px]">
-                                <div>
-                                  <div className="font-bold uppercase text-neutral-500">On-chain XP</div>
-                                  <div className="font-mono text-sm text-emerald-400">{onChainStats.totalXP.toString()}</div>
-                                </div>
-                                <div>
-                                  <div className="font-bold uppercase text-neutral-500">Games</div>
-                                  <div className="font-mono text-sm text-white">{onChainStats.gamesPlayed.toString()}</div>
-                                </div>
-                              </div>
-                            )}
-                          </>
-                        )}
-                        </div>
-                      </div>
-
+                      </>
+                    ) : (
                       <button
                         type="button"
                         onClick={startNewGame}
-                        disabled={!wallet.address || newGameMutation.isPending || isPublishing}
-                        className="flex flex-col items-center justify-center gap-1 rounded-xl border border-neutral-600 bg-neutral-900/60 px-3 py-2.5 text-center text-[11px] font-black uppercase tracking-widest text-white transition-colors hover:border-blue-500 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40 sm:text-xs mb-5"
+                        disabled={newGameMutation.isPending || isPublishing}
+                        className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#4c00ff] px-8 text-xs font-black uppercase text-white shadow-[0_0_30px_rgba(76,0,255,0.45)] transition-transform hover:scale-[1.02] hover:bg-[#5d16ff] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         {newGameMutation.isPending ? (
                           <Loader2 className="animate-spin" size={16} />
                         ) : (
-                          <Play size={16} fill="currentColor" className="text-blue-400" />
+                          "Start Match"
                         )}
-                        New game
-                        <span className="text-[9px] font-normal normal-case tracking-normal text-neutral-500 sm:text-[10px]">
-                          Same wallet · new session
-                        </span>
                       </button>
+                    )}
+                  </div>
+                )}
+
+                {gameState === "STARTING" && (
+                  <div className="text-sm font-medium italic text-white animate-pulse">
+                    Setting up the lights ...
+                  </div>
+                )}
+
+                {resultState && (
+                  <div className="flex w-full max-w-[330px] flex-col items-center animate-in fade-in zoom-in duration-300">
+                    <div
+                      className={`mb-3 flex size-[50px] items-center justify-center rounded-full sm:size-[56px] ${
+                        isWinner
+                          ? "bg-lime-500/30 text-lime-300 shadow-[0_0_18px_rgba(132,204,22,0.22)]"
+                          : "bg-red-600/35 text-red-400 shadow-[0_0_18px_rgba(220,38,38,0.2)]"
+                      }`}
+                    >
+                      {isWinner ? (
+                        <Trophy className="size-[25px] sm:size-[28px]" />
+                      ) : (
+                        <Bomb className="size-[25px] sm:size-[28px]" />
+                      )}
                     </div>
+
+                    <h2 className="mb-2 text-[1.55rem] font-black uppercase italic leading-none text-white sm:text-[1.9rem]">
+                      {isWinner ? "Session Complete" : "Terminated"}
+                    </h2>
+                    <p className="mb-4 text-[10px] font-medium uppercase tracking-[0.18em] text-white/75 sm:mb-5 sm:text-[12px]">
+                      {isWinner ? "You survived the match !" : "Fatal contact with danger light"}
+                    </p>
+
+                    <div className="mb-3 grid grid-cols-2 gap-3 sm:mb-4">
+                      <div className="flex min-h-[72px] w-[124px] flex-col items-center justify-center rounded-[12px] border border-white/15 bg-[#1b1920] px-3 py-2 sm:w-[138px]">
+                        <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/80 sm:text-[12px]">Total XP</div>
+                        <div className="mt-2 font-mono text-[1.7rem] font-black italic leading-none text-[#4c00ff] sm:text-[1.9rem]">
+                          {score * XP_PER_HIT}
+                        </div>
+                      </div>
+                      <div className="flex min-h-[72px] w-[124px] flex-col items-center justify-center rounded-[12px] border border-white/15 bg-[#222222] px-3 py-2 sm:w-[138px]">
+                        <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/80 sm:text-[12px]">Hits</div>
+                        <div className="mt-2 font-mono text-[1.7rem] font-black italic leading-none text-white sm:text-[1.9rem]">
+                          {score}
+                        </div>
+                      </div>
+                    </div>
+
+                    {gameState === "FINISHED" && submitMutation.isError ? (
+                      <div className="flex w-full max-w-[270px] flex-col items-center gap-3">
+                        <p className="text-[11px] leading-snug text-red-200/90">
+                          {submitMutation.error?.message ??
+                            "Could not submit session. Check the API logs, run `pnpm db:seed`, and ensure Redis is running."}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={resetToIdle}
+                          className="rounded-full border border-[#7d50ff] px-5 py-2 text-[10px] font-black uppercase text-white hover:bg-white/10"
+                        >
+                          New Match
+                        </button>
+                      </div>
+                    ) : proofReady ? (
+                      <div className="flex w-full max-w-[300px] flex-col items-center gap-2">
+                        <p
+                          className={`text-[13px] font-medium italic sm:text-[17px] ${
+                            verificationFailed ? "text-amber-300" : "text-lime-300"
+                          }`}
+                        >
+                          {verificationFailed ? "Proofs Need Review." : "Proofs Verified."}
+                        </p>
+
+                        {settlement && !chainTxHash && (
+                          <button
+                            type="button"
+                            onClick={() => void publishToChain()}
+                            disabled={
+                              isPublishing ||
+                              !wallet.address ||
+                              !sessionPlayerAddress ||
+                              wallet.address.toLowerCase() !== sessionPlayerAddress.toLowerCase()
+                            }
+                            className="inline-flex min-h-9 items-center justify-center rounded-full bg-linear-to-r from-[#c43bf2] to-[#ff7a35] px-5 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-[0_0_20px_rgba(196,59,242,0.22)] disabled:cursor-not-allowed disabled:opacity-45 sm:min-h-12 sm:px-7 sm:text-[15px] lg:min-w-[252px]"
+                          >
+                            {isPublishing ? "Confirm in wallet..." : "Publish XP Onchain"}
+                          </button>
+                        )}
+
+                        {chainTxHash && (
+                          <a
+                            href={`https://sepolia.basescan.org/tx/${chainTxHash}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex min-h-9 items-center justify-center gap-2 rounded-full bg-linear-to-r from-[#c43bf2] to-[#ff7a35] px-5 text-[11px] font-black uppercase tracking-[0.12em] text-white sm:min-h-12 sm:px-7 sm:text-[15px] lg:min-w-[252px]"
+                          >
+                            <ExternalLink size={12} />
+                            View Onchain
+                          </a>
+                        )}
+
+                        {chainPublishError && (
+                          <p className="max-w-[240px] text-[10px] leading-snug text-red-300">
+                            {chainPublishError}
+                          </p>
+                        )}
+
+                        {onChainStats && chainTxHash && (
+                          <p className="font-mono text-[10px] text-white/45">
+                            {onChainStats.totalXP.toString()} total XP onchain
+                          </p>
+                        )}
+
+                      </div>
+                    ) : (
+                      <div className="flex w-full max-w-[290px] flex-col items-center">
+                        <p className="mb-2 text-[10px] font-medium italic text-white/70">
+                          generating proofs ...
+                        </p>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#d9c9ff]">
+                          <div
+                            className="h-full w-1/3 rounded-full bg-[#4c00ff]/50"
+                            style={{ animation: "verifyBar 2.2s ease-in-out infinite" }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             )}
           </div>
-        )}
-      </div>
-      </div>
 
-      {/* Legend */}
-      <div className="mt-10 flex w-full max-w-md flex-col items-center justify-center gap-4 text-neutral-500 sm:mt-12 sm:flex-row sm:flex-wrap sm:gap-x-10 sm:gap-y-2">
-        <div className="flex max-w-full items-center gap-2.5 text-xs font-bold uppercase tracking-wide">
-          <div className="size-4 shrink-0 rounded bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
-          <span className="whitespace-normal text-center sm:whitespace-nowrap">Reward (+{XP_PER_HIT} XP)</span>
-        </div>
-        <div className="flex max-w-full items-center gap-2.5 text-xs font-bold uppercase tracking-wide">
-          <div className="size-4 shrink-0 rounded bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
-          <span className="whitespace-normal text-center sm:whitespace-nowrap">Danger (Death)</span>
-        </div>
+          {proofReady ? (
+            <button
+              type="button"
+              onClick={startNewGame}
+              disabled={!wallet.address || newGameMutation.isPending || isPublishing}
+              className="mx-auto mt-3 inline-flex min-h-9 items-center justify-center rounded-full border border-[#7d50ff] px-6 text-[11px] font-black uppercase tracking-[0.12em] text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45 sm:min-h-12 sm:px-7 sm:text-[15px] lg:min-w-[165px]"
+            >
+              {newGameMutation.isPending ? "Starting..." : "New Match"}
+            </button>
+          ) : !resultState ? (
+            <div className="mt-6 flex w-full items-center justify-center gap-[72px] text-[11px] font-medium uppercase text-white/85 sm:hidden">
+              <div className="flex items-center gap-2">
+                <div className="size-5 rounded-[4px] bg-[#4c00ff] shadow-[0_0_10px_rgba(76,0,255,0.75)]" />
+                <span>Reward</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="size-5 rounded-[4px] bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.65)]" />
+                <span>Danger</span>
+              </div>
+            </div>
+          ) : null}
+        </section>
+
       </div>
 
       <style>{`
@@ -730,6 +661,6 @@ function SpeedOLight() {
           100% { transform: translateX(220%); opacity: 0.85; }
         }
       `}</style>
-    </div>
+    </main>
   );
 }

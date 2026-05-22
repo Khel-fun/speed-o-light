@@ -20,7 +20,7 @@ function messageFromWalletError(err: unknown): string {
   const msg = typeof o?.message === "string" ? o.message : "";
 
   if (code === 4001) {
-    return "Connection was cancelled. Approve the request in your wallet to try again.";
+    return "Connection was cancelled.";
   }
   if (
     /not been authorized by the user/i.test(msg) ||
@@ -28,17 +28,12 @@ function messageFromWalletError(err: unknown): string {
     /rejected the request/i.test(msg) ||
     /request rejected/i.test(msg)
   ) {
-    return "Connection was cancelled. Approve the request in your wallet to try again.";
+    return "Connection was cancelled.";
   }
 
   if (err instanceof Error && err.message) return err.message;
   if (msg) return msg;
   return "Could not connect wallet.";
-}
-
-export function shortenAddress(addr: string, left = 6, right = 4) {
-  if (addr.length <= left + right + 3) return addr;
-  return `${addr.slice(0, left)}…${addr.slice(-right)}`;
 }
 
 export function useWallet() {
