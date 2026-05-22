@@ -4,7 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Bomb, CircleUserRound, ExternalLink, Loader2, Trophy, Zap } from "lucide-react";
 import { useWallet } from "@/hooks/useWallet";
 import { shortenAddress } from "@/lib/shorten-address";
-import { publishSettlementOnChain, readOnChainPlayerStats } from "@/lib/publish-settlement";
+import { publishSettlementOnChain } from "@/lib/publish-settlement";
 import { trpc } from "@/utils/trpc";
 
 export const Route = createFileRoute("/")({
@@ -92,12 +92,6 @@ function SpeedOLight() {
   const [chainTxHash, setChainTxHash] = useState<`0x${string}` | null>(null);
   const [chainPublishNotice, setChainPublishNotice] = useState<ChainPublishNotice | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [onChainStats, setOnChainStats] = useState<{
-    totalXP: bigint;
-    gamesPlayed: bigint;
-    gamesWon: bigint;
-    bestScore: bigint;
-  } | null>(null);
   /** Wallet address this session was started with (must match for on-chain publish). */
   const [sessionPlayerAddress, setSessionPlayerAddress] = useState<string | null>(null);
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
@@ -228,7 +222,6 @@ function SpeedOLight() {
     submitMutation.reset();
     setChainTxHash(null);
     setChainPublishNotice(null);
-    setOnChainStats(null);
     setSessionId(null);
     setSessionPlayerAddress(null);
     setIsWinner(false);
@@ -249,7 +242,6 @@ function SpeedOLight() {
         onSuccess: ({ sessionId: id, gridSequence }) => {
           setChainTxHash(null);
           setChainPublishNotice(null);
-          setOnChainStats(null);
           setSessionPlayerAddress(addr);
 
           const now = Date.now();
@@ -278,7 +270,6 @@ function SpeedOLight() {
     setSessionId(null);
     setChainTxHash(null);
     setChainPublishNotice(null);
-    setOnChainStats(null);
     setSessionPlayerAddress(null);
     submitMutation.reset();
   }, [submitMutation]);
@@ -338,8 +329,6 @@ function SpeedOLight() {
     try {
       const hash = await publishSettlementOnChain(settlement, wallet.address as `0x${string}`);
       setChainTxHash(hash);
-      const stats = await readOnChainPlayerStats(wallet.address as `0x${string}`);
-      setOnChainStats(stats);
     } catch (e) {
       setChainPublishNotice(normalizeChainPublishError(e));
     } finally {
@@ -628,10 +617,12 @@ function SpeedOLight() {
                             href={`https://sepolia.basescan.org/tx/${chainTxHash}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex min-h-9 items-center justify-center gap-2 rounded-full bg-linear-to-r from-[#c43bf2] to-[#ff7a35] px-5 text-[11px] font-black uppercase tracking-[0.12em] text-white sm:min-h-12 sm:px-7 sm:text-[15px] lg:min-w-[252px]"
+                            className="inline-flex items-center justify-center gap-2 px-1 py-2 text-[11px] font-black uppercase tracking-[0.12em] transition-opacity hover:opacity-80 sm:text-[15px]"
                           >
-                            <ExternalLink size={12} />
-                            View Onchain
+                            <ExternalLink size={12} className="text-[#ff7a35]" />
+                            <span className="bg-linear-to-r from-[#c43bf2] to-[#ff7a35] bg-clip-text text-transparent">
+                              View Onchain
+                            </span>
                           </a>
                         )}
 
@@ -644,12 +635,6 @@ function SpeedOLight() {
                             }`}
                           >
                             {chainPublishNotice.message}
-                          </p>
-                        )}
-
-                        {onChainStats && chainTxHash && (
-                          <p className="font-mono text-[10px] text-white/45">
-                            {onChainStats.totalXP.toString()} total XP onchain
                           </p>
                         )}
 
