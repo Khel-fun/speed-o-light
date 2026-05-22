@@ -33,8 +33,50 @@ type PendingSubmit = {
   tapSequence: Tap[];
   dangerTap: Tap;
 };
+type ChainPublishNotice = {
+  tone: "cancelled" | "error";
+  message: string;
+};
 
 const TERMINAL_STATUSES = ["FINALIZED", "AGGREGATED", "FAILED"];
+
+function walletErrorMessage(err: unknown): string {
+  const details: string[] = [];
+  let current: unknown = err;
+
+  while (current && typeof current === "object") {
+    const o = current as { code?: unknown; message?: unknown; shortMessage?: unknown; cause?: unknown };
+    if (typeof o.code === "number") details.push(String(o.code));
+    if (typeof o.shortMessage === "string") details.push(o.shortMessage);
+    if (typeof o.message === "string") details.push(o.message);
+    current = o.cause;
+  }
+
+  if (err instanceof Error && err.message) details.push(err.message);
+  return details.join(" ");
+}
+
+function normalizeChainPublishError(err: unknown): ChainPublishNotice {
+  const message = walletErrorMessage(err);
+
+  if (
+    /\b4001\b/.test(message) ||
+    /user rejected/i.test(message) ||
+    /rejected the request/i.test(message) ||
+    /request rejected/i.test(message) ||
+    /denied transaction signature/i.test(message)
+  ) {
+    return {
+      tone: "cancelled",
+      message: "Transaction signing was cancelled.",
+    };
+  }
+
+  return {
+    tone: "error",
+    message: err instanceof Error && err.message ? err.message : "On-chain publish failed.",
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -48,7 +90,7 @@ function SpeedOLight() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isWinner, setIsWinner] = useState(false);
   const [chainTxHash, setChainTxHash] = useState<`0x${string}` | null>(null);
-  const [chainPublishError, setChainPublishError] = useState<string | null>(null);
+  const [chainPublishNotice, setChainPublishNotice] = useState<ChainPublishNotice | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [onChainStats, setOnChainStats] = useState<{
     totalXP: bigint;
@@ -185,7 +227,7 @@ function SpeedOLight() {
     playerAddrRef.current = addr;
     submitMutation.reset();
     setChainTxHash(null);
-    setChainPublishError(null);
+    setChainPublishNotice(null);
     setOnChainStats(null);
     setSessionId(null);
     setSessionPlayerAddress(null);
@@ -206,7 +248,7 @@ function SpeedOLight() {
       {
         onSuccess: ({ sessionId: id, gridSequence }) => {
           setChainTxHash(null);
-          setChainPublishError(null);
+          setChainPublishNotice(null);
           setOnChainStats(null);
           setSessionPlayerAddress(addr);
 
@@ -235,7 +277,7 @@ function SpeedOLight() {
     setTimeLeft(SESSION_LIMIT);
     setSessionId(null);
     setChainTxHash(null);
-    setChainPublishError(null);
+    setChainPublishNotice(null);
     setOnChainStats(null);
     setSessionPlayerAddress(null);
     submitMutation.reset();
@@ -291,7 +333,7 @@ function SpeedOLight() {
 
   const publishToChain = useCallback(async () => {
     if (!settlement || !wallet.address) return;
-    setChainPublishError(null);
+    setChainPublishNotice(null);
     setIsPublishing(true);
     try {
       const hash = await publishSettlementOnChain(settlement, wallet.address as `0x${string}`);
@@ -299,7 +341,7 @@ function SpeedOLight() {
       const stats = await readOnChainPlayerStats(wallet.address as `0x${string}`);
       setOnChainStats(stats);
     } catch (e) {
-      setChainPublishError(e instanceof Error ? e.message : "On-chain publish failed.");
+      setChainPublishNotice(normalizeChainPublishError(e));
     } finally {
       setIsPublishing(false);
     }
@@ -593,9 +635,15 @@ function SpeedOLight() {
                           </a>
                         )}
 
-                        {chainPublishError && (
-                          <p className="max-w-[240px] text-[10px] leading-snug text-red-300">
-                            {chainPublishError}
+                        {chainPublishNotice && (
+                          <p
+                            className={`max-w-[240px] rounded-[8px] border px-3 py-2 text-center text-[10px] font-medium leading-snug ${
+                              chainPublishNotice.tone === "cancelled"
+                                ? "border-amber-300/25 bg-amber-300/8 text-amber-200"
+                                : "border-red-400/25 bg-red-500/8 text-red-200"
+                            }`}
+                          >
+                            {chainPublishNotice.message}
                           </p>
                         )}
 
