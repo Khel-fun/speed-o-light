@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getAddress } from "viem";
 
-import { ensureBaseSepolia } from "@/lib/base-sepolia";
+import { ensureBaseMainnet } from "@/lib/base-mainnet";
 
 type EthereumProvider = {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
@@ -89,7 +89,7 @@ export function useWallet() {
     }
     setIsConnecting(true);
     try {
-      await ensureBaseSepolia(eth);
+      await ensureBaseMainnet(eth);
       const raw = (await eth.request({ method: "eth_requestAccounts" })) as string[];
       const first = raw?.[0];
       if (!first || !/^0x[0-9a-fA-F]{40}$/.test(first)) {

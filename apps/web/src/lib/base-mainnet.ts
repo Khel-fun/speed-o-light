@@ -1,18 +1,18 @@
 import type { Chain } from "viem";
-import { baseSepolia } from "viem/chains";
+import { base } from "viem/chains";
 import { env } from "@speed-o-light/env/web";
 
-/** Base Sepolia (chain must match `VITE_CHAIN_ID` in `apps/web/.env`). */
+/** Base (chain must match `VITE_CHAIN_ID` in `apps/web/.env`). */
 export function getSettlementChain(): Chain {
-  if (env.VITE_CHAIN_ID !== baseSepolia.id) {
+  if (env.VITE_CHAIN_ID !== base.id) {
     throw new Error(
-      `Expected Base Sepolia (chain id ${baseSepolia.id}). Set VITE_CHAIN_ID=${baseSepolia.id} in apps/web/.env`,
+      `Expected Base Mainnet (chain id ${base.id}). Set VITE_CHAIN_ID=${base.id} in apps/web/.env`,
     );
   }
-  return baseSepolia;
+  return base;
 }
 
-export async function ensureBaseSepolia(ethereum: {
+export async function ensureBaseMainnet(ethereum: {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
 }) {
   const chain = getSettlementChain();
@@ -30,7 +30,7 @@ export async function ensureBaseSepolia(ethereum: {
           chainName: chain.name,
           nativeCurrency: chain.nativeCurrency,
           rpcUrls: chain.rpcUrls.default.http,
-          blockExplorerUrls: [chain.blockExplorers?.default?.url ?? "https://sepolia.basescan.org"],
+          blockExplorerUrls: [chain.blockExplorers?.default?.url ??  "https://basescan.org"],
         },
       ],
     });

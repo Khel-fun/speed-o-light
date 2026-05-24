@@ -1,8 +1,8 @@
 import { createPublicClient, createWalletClient, custom, http } from "viem";
-import { baseSepolia } from "viem/chains";
+import { base } from "viem/chains";
 import { env } from "@speed-o-light/env/web";
 
-import { ensureBaseSepolia } from "@/lib/base-sepolia";
+import { ensureBaseMainnet } from "@/lib/base-mainnet";
 import { speedOLightStateAbi } from "@/lib/speed-o-light-state-abi";
 
 export type SettlementPayload = {
@@ -30,7 +30,7 @@ export async function publishSettlementOnChain(
   const eth = getEthereum();
   if (!eth) throw new Error("Wallet not available");
 
-  await ensureBaseSepolia(eth);
+  await ensureBaseMainnet(eth);
 
   const [from] = (await eth.request({ method: "eth_requestAccounts" })) as string[];
   if (!from || from.toLowerCase() !== playerAddress.toLowerCase()) {
@@ -39,7 +39,7 @@ export async function publishSettlementOnChain(
 
   const transport = custom(eth);
   const walletClient = createWalletClient({
-    chain: baseSepolia,
+    chain: base,
     transport,
   });
 
@@ -64,11 +64,11 @@ export async function publishSettlementOnChain(
 
 export async function readOnChainPlayerStats(playerAddress: `0x${string}`) {
   const contractAddress = env.VITE_CONTRACT_ADDRESS as `0x${string}`;
-  const rpc = baseSepolia.rpcUrls.default.http[0];
+  const rpc = base.rpcUrls.default.http[0];
   if (!rpc) throw new Error("No RPC URL for Base Sepolia");
 
   const publicClient = createPublicClient({
-    chain: baseSepolia,
+    chain: base,
     transport: http(rpc),
   });
 

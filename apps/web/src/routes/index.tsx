@@ -614,7 +614,7 @@ function SpeedOLight() {
 
                         {chainTxHash && (
                           <a
-                            href={`https://sepolia.basescan.org/tx/${chainTxHash}`}
+                            href={`https://basescan.org/tx/${chainTxHash}`}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center justify-center gap-2 px-1 py-2 text-[11px] font-black uppercase tracking-[0.12em] transition-opacity hover:opacity-80 sm:text-[15px]"
